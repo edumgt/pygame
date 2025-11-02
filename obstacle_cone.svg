@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="gOrange" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff944d"/>
+      <stop offset="1" stop-color="#ff5e00"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 그림자 -->
+  <ellipse cx="96" cy="176" rx="56" ry="10" fill="#000" opacity="0.2"/>
+
+  <!-- 바닥판 -->
+  <rect x="36" y="156" width="120" height="16" rx="8" fill="#3c3c3c"/>
+
+  <!-- 콘 몸체 -->
+  <path d="M96 20 L152 156 H40 Z" fill="url(#gOrange)" stroke="#b33d00" stroke-width="4"/>
+
+  <!-- 흰줄 -->
+  <path d="M113 72 L130 116 H62 L79 72 Z" fill="#ffffff" opacity="0.9"/>
+  <path d="M104 48 L110 64 H82 L88 48 Z" fill="#ffffff" opacity="0.9"/>
+
+  <!-- 상단 캡 -->
+  <circle cx="96" cy="28" r="10" fill="#ffead6" stroke="#b33d00" stroke-width="3"/>
+</svg>

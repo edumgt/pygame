@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="384" viewBox="0 0 256 384">
+  <defs>
+    <linearGradient id="gBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5fb3ff"/>
+      <stop offset="1" stop-color="#1a73e8"/>
+    </linearGradient>
+    <linearGradient id="gGlass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfe8ff"/>
+      <stop offset="1" stop-color="#7fb9ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 그림자 -->
+  <ellipse cx="128" cy="360" rx="70" ry="12" fill="#000" opacity="0.25"/>
+
+  <!-- 차체(메인) -->
+  <rect x="58" y="16" width="140" height="352" rx="30" fill="url(#gBody)" stroke="#0d47a1" stroke-width="4"/>
+
+  <!-- 범퍼 -->
+  <rect x="64" y="16" width="128" height="28" rx="14" fill="#0b5bd3"/>
+  <rect x="64" y="340" width="128" height="28" rx="14" fill="#0b5bd3"/>
+
+  <!-- 유리(앞/뒤) -->
+  <rect x="74" y="48" width="108" height="70" rx="14" fill="url(#gGlass)" stroke="#3b6fb6" stroke-width="3"/>
+  <rect x="74" y="266" width="108" height="70" rx="14" fill="url(#gGlass)" stroke="#3b6fb6" stroke-width="3"/>
+
+  <!-- 캐빈 -->
+  <rect x="66" y="124" width="124" height="128" rx="18" fill="#165bbf" opacity="0.85" stroke="#0d47a1" stroke-width="3"/>
+
+  <!-- 도어 라인 -->
+  <line x1="128" y1="128" x2="128" y2="248" stroke="#0d47a1" stroke-width="2" opacity="0.6"/>
+
+  <!-- 사이드 미러 -->
+  <rect x="40" y="110" width="24" height="22" rx="8" fill="#1a73e8" stroke="#0d47a1" stroke-width="3"/>
+  <rect x="192" y="110" width="24" height="22" rx="8" fill="#1a73e8" stroke="#0d47a1" stroke-width="3"/>
+
+  <!-- 휠 하우징(검정) -->
+  <rect x="38" y="70" width="20" height="80" rx="8" fill="#101216"/>
+  <rect x="198" y="70" width="20" height="80" rx="8" fill="#101216"/>
+  <rect x="38" y="240" width="20" height="80" rx="8" fill="#101216"/>
+  <rect x="198" y="240" width="20" height="80" rx="8" fill="#101216"/>
+
+  <!-- 휠(회색) -->
+  <rect x="44" y="76" width="8" height="68" rx="4" fill="#2e3136"/>
+  <rect x="204" y="76" width="8" height="68" rx="4" fill="#2e3136"/>
+  <rect x="44" y="246" width="8" height="68" rx="4" fill="#2e3136"/>
+  <rect x="204" y="246" width="8" height="68" rx="4" fill="#2e3136"/>
+
+  <!-- 라이트 -->
+  <rect x="86" y="22" width="22" height="10" rx="4" fill="#ffd166"/>
+  <rect x="148" y="22" width="22" height="10" rx="4" fill="#ffd166"/>
+  <rect x="86" y="352" width="22" height="10" rx="4" fill="#ffd166" opacity="0.75"/>
+  <rect x="148" y="352" width="22" height="10" rx="4" fill="#ffd166" opacity="0.75"/>
+</svg>
