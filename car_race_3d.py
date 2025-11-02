@@ -1,67 +1,80 @@
 from ursina import *
-from ursina.shaders import lit_with_shadows_shader
-from panda3d.core import NodePath
+from panda3d.core import loadPrcFileData, NodePath, Loader, Filename, DirectionalLight, AmbientLight
 import os, math
 
-app = Ursina(title='🚗 3D Car Orbit Viewer (Stable)', borderless=False)
-window.size = (1200, 800)
-window.color = color.rgb(15, 15, 20)
+# ----------------------------
+# 렌더링 설정
+# ----------------------------
+loadPrcFileData('', 'framebuffer-srgb true')
+loadPrcFileData('', 'gl-version 3 3')
+loadPrcFileData('', 'textures-power-2 up')
+loadPrcFileData('', 'framebuffer-multisample 1')
+loadPrcFileData('', 'multisamples 4')
 
-# --------------------------
-# 모델 경로
-# --------------------------
+app = Ursina(title='🚗 PBR Car Viewer (Exposure Fixed)', borderless=False)
+window.size = (1280, 800)
+window.color = color.rgb(15, 15, 18)
+
 MODEL_PATH = os.path.join('models', 'car.glb')
 if not os.path.exists(MODEL_PATH):
     print(f'❌ 모델 파일이 없습니다: {MODEL_PATH}')
     exit()
 
-# --------------------------
-# 모델 로드 및 스케일 자동 조정
-# --------------------------
-car = Entity(model=MODEL_PATH, shader=lit_with_shadows_shader)
+# ----------------------------
+# 모델 로드 (원본 텍스처 유지)
+# ----------------------------
+loader = Loader.get_global_ptr()
+car_np = loader.load_sync(Filename.from_os_specific(MODEL_PATH))
+car_np = NodePath(car_np)
+car_np.reparent_to(render)
+render.set_shader_auto()
 
+# 스케일 자동 조정
 try:
-    np = NodePath(car.model)
-    min_p, max_p = np.get_tight_bounds()
-    if min_p and max_p:
-        size_x = max_p.x - min_p.x
-        size_y = max_p.y - min_p.y
-        size_z = max_p.z - min_p.z
-        max_dim = max(size_x, size_y, size_z)
-        if max_dim <= 0 or max_dim != max_dim:
-            max_dim = 1.0
-        car.scale = 4 / max_dim
-        # ✅ NodePath.set_y 충돌 방지를 위해 position 직접 설정
-        car.position = Vec3(0, -min_p.y * car.scale * 0.5, 0)
-        print(f"✅ 모델 크기 자동 조정: {car.scale:.3f}")
-    else:
-        raise ValueError("get_tight_bounds() 결과 없음")
+    min_p, max_p = car_np.get_tight_bounds()
+    max_dim = max(max_p.x - min_p.x, max_p.y - min_p.y, max_p.z - min_p.z)
+    scale_factor = 4 / max_dim if max_dim > 0 else 1
+    car_np.set_scale(scale_factor)
+    car_np.set_pos(0, -min_p.y * scale_factor * 0.5, 0)
+    print(f"✅ 모델 스케일 조정 완료 (scale={scale_factor:.3f})")
 except Exception as e:
-    print(f"⚠️ bounds 계산 실패: {e}")
-    car.scale = 1
+    print(f"⚠️ 모델 bounds 계산 실패: {e}")
 
-car.rotation_y = 180
-car.color = color.white
-car.shininess = 64
+# ----------------------------
+# 조명 (안정형)
+# ----------------------------
+# 햇빛
+sun_light = DirectionalLight('sun')
+sun_light.set_color((0.8, 0.8, 0.7, 1))  # 노란빛 약하게
+sun_np = render.attach_new_node(sun_light)
+sun_np.set_hpr(45, -60, 0)
+render.set_light(sun_np)
 
-# --------------------------
-# 바닥 + 조명
-# --------------------------
-plane = Entity(model='plane', scale=40, color=color.rgb(70, 70, 70),
-               position=(0, 0, 0), shader=lit_with_shadows_shader)
+# 보조광 (하늘 반사)
+fill_light = DirectionalLight('fill')
+fill_light.set_color((0.5, 0.55, 0.7, 1))
+fill_np = render.attach_new_node(fill_light)
+fill_np.set_hpr(-60, 40, 0)
+render.set_light(fill_np)
 
-sun = DirectionalLight(y=10, z=-10, x=6, shadows=True, color=color.rgb(255, 250, 230))
-sun.look_at(Vec3(0, 0, 0))
-AmbientLight(color=color.rgba(255, 255, 255, 220))
-side = DirectionalLight(x=-8, y=5, z=5, color=color.rgb(200, 220, 255))
-side.look_at(Vec3(0, 0, 0))
+# 환경광 (전체 밝기)
+ambient = AmbientLight('ambient')
+ambient.set_color((0.35, 0.35, 0.4, 1))
+ambient_np = render.attach_new_node(ambient)
+render.set_light(ambient_np)
 
-# --------------------------
-# Orbit 카메라
-# --------------------------
+# ----------------------------
+# 바닥면
+# ----------------------------
+plane = Entity(model='plane', scale=40, position=(0, 0, 0), color=color.rgb(50, 50, 50))
+plane.specular = color.rgb(90, 90, 90)
+
+# ----------------------------
+# Orbit Camera
+# ----------------------------
 orbit_distance = 8.0
 orbit_yaw = 30
-orbit_pitch = 20
+orbit_pitch = 15
 orbit_sensitivity = 200
 zoom_speed = 1.0
 
@@ -75,7 +88,7 @@ def update_camera():
     cam_y = orbit_distance * math.sin(pitch_r)
     cam_z = orbit_distance * math.cos(yaw_r) * math.cos(pitch_r)
     camera.position = (cam_x, cam_y + 1.5, cam_z)
-    camera.look_at(car.position + Vec3(0, 1.0, 0))
+    camera.look_at(car_np.get_pos() + Vec3(0, 1, 0))
 
 def input(key):
     global orbit_distance
@@ -85,26 +98,25 @@ def input(key):
         orbit_distance = min(40, orbit_distance + zoom_speed)
 
 mouse_prev = None
-
 def update():
     global orbit_yaw, orbit_pitch, mouse_prev
     if held_keys['left mouse']:
         if mouse_prev is None:
-            mouse_prev = Vec2(mouse.x, mouse.y)  # ✅ Vec3 → Vec2 수정
+            mouse_prev = Vec2(mouse.x, mouse.y)
         delta = Vec2(mouse.x, mouse.y) - mouse_prev
         orbit_yaw -= delta.x * orbit_sensitivity
         orbit_pitch += delta.y * orbit_sensitivity
-        orbit_pitch = clamp(orbit_pitch, -20, 60)
+        orbit_pitch = clamp(orbit_pitch, -15, 60)
         mouse_prev = Vec2(mouse.x, mouse.y)
     else:
         mouse_prev = None
     update_camera()
 
-# --------------------------
-# 안내 텍스트
-# --------------------------
+# ----------------------------
+# 텍스트 안내
+# ----------------------------
 Text(
-    "왼쪽 드래그: 360° 회전 | 휠: 줌 | ESC: 종료",
+    "왼쪽 드래그: 회전 | 휠: 줌 | ESC: 종료 | 노출 보정 / 텍스처 유지형",
     origin=(0, 0), y=-.45, color=color.white, scale=1.05
 )
 
