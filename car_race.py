@@ -1,56 +1,79 @@
 import pygame
 import random
 import sys
-import io
-from PIL import Image
-import xml.etree.ElementTree as ET
+import os
 
-# ==== SVG → PNG 변환용 (Pillow 내장 변환) ====
-# SVG의 색상/도형만 간단히 파싱해서 Pillow로 그리는 임시 대체 렌더러
-def svg_to_surface(svg_path, width, height, color=(100, 150, 255)):
-    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    # 단순 색 사각형만 채우는 대체 렌더 (실제 SVG 렌더링 없이 플레이용)
-    from PIL import ImageDraw
-    draw = ImageDraw.Draw(img)
-    draw.rectangle([0, 0, width, height], fill=color)
-    return pygame.image.fromstring(img.tobytes(), img.size, img.mode).convert_alpha()
-
-# ==== Pygame 초기화 ====
+# ==============================
+# 🚗 Pygame 초기 설정
+# ==============================
 pygame.init()
 pygame.mixer.init()
 
 WIDTH, HEIGHT = 400, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("🚗 자동차 경주 (cairo DLL 없이)")
+pygame.display.set_caption("🚗 자동차 경주 (Play Again 기능 포함)")
 
 WHITE = (255, 255, 255)
 GRAY = (60, 60, 60)
 RED = (200, 30, 30)
 YELLOW = (255, 230, 50)
+
 clock = pygame.time.Clock()
 FPS = 60
 
-# ==== car.svg / obstacle.svg 파일 경로 ====
-car_svg_path = "car.svg"
-obstacle_svg_path = "obstacle_cone.svg"
+# ==============================
+# 🎨 파일 경로
+# ==============================
+CAR_IMG_PATH = "car.png"
+OBS_IMG_PATH = "obstacle.png"
+BGM_PATH = "bgm.mp3"
+CRASH_PATH = "crash.wav"
 
-# ==== 이미지 로드 ====
-car_img = svg_to_surface(car_svg_path, 50, 90, color=(0, 120, 255))
-obs_img = svg_to_surface(obstacle_svg_path, 50, 80, color=(255, 100, 0))
+# ==============================
+# 🖼 이미지 로드
+# ==============================
+car_img = pygame.image.load(CAR_IMG_PATH).convert_alpha()
+car_img = pygame.transform.smoothscale(car_img, (50, 90))
 
-# ==== 변수 ====
-car_x = WIDTH // 2 - 25
-car_y = HEIGHT - 110
-car_speed = 5
-obs_x = random.randint(80, WIDTH - 130)
-obs_y = -80
-obs_speed = 5
-score = 0
+obs_img = pygame.image.load(OBS_IMG_PATH).convert_alpha()
+obs_img = pygame.transform.smoothscale(obs_img, (50, 80))
+
+# ==============================
+# 🎵 사운드 로드
+# ==============================
+if os.path.exists(BGM_PATH):
+    pygame.mixer.music.load(BGM_PATH)
+    pygame.mixer.music.set_volume(0.5)
+    pygame.mixer.music.play(-1)
+else:
+    print("⚠️ 배경음악 없음")
+
+crash_sound = None
+if os.path.exists(CRASH_PATH):
+    crash_sound = pygame.mixer.Sound(CRASH_PATH)
+    crash_sound.set_volume(0.8)
+
+# ==============================
+# 🧩 변수 초기화 함수
+# ==============================
+def reset_game():
+    global car_x, car_y, car_speed, obs_x, obs_y, obs_speed, score, line_speed, lines
+    car_x = WIDTH // 2 - 25
+    car_y = HEIGHT - 110
+    car_speed = 5
+    obs_x = random.randint(80, WIDTH - 130)
+    obs_y = -80
+    obs_speed = 5
+    score = 0
+    line_speed = 5
+    lines = [pygame.Rect(WIDTH // 2 - 5, i, 10, 50) for i in range(0, HEIGHT, 90)]
+
+reset_game()
 font = pygame.font.SysFont(None, 36)
-line_speed = 5
-lines = [pygame.Rect(WIDTH // 2 - 5, i, 10, 50) for i in range(0, HEIGHT, 90)]
 
-# ==== 함수 ====
+# ==============================
+# 🔧 함수 정의
+# ==============================
 def draw_lines():
     for line in lines:
         pygame.draw.rect(screen, YELLOW, line)
@@ -66,14 +89,36 @@ def show_score():
     screen.blit(text, (10, 10))
 
 def game_over():
-    text = font.render("💥 Game Over!", True, RED)
-    screen.blit(text, (WIDTH // 2 - 100, HEIGHT // 2 - 20))
-    pygame.display.flip()
-    pygame.time.wait(2000)
-    pygame.quit()
-    sys.exit()
+    if crash_sound:
+        crash_sound.play()
+    pygame.mixer.music.stop()
 
-# ==== 메인 루프 ====
+    text1 = font.render("💥 Game Over!", True, RED)
+    text2 = font.render("Play again? (Y/N)", True, WHITE)
+
+    screen.blit(text1, (WIDTH // 2 - 100, HEIGHT // 2 - 40))
+    screen.blit(text2, (WIDTH // 2 - 120, HEIGHT // 2 + 10))
+    pygame.display.flip()
+
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_y:
+                    reset_game()
+                    if os.path.exists(BGM_PATH):
+                        pygame.mixer.music.play(-1)
+                    waiting = False
+                elif event.key == pygame.K_n:
+                    pygame.quit()
+                    sys.exit()
+
+# ==============================
+# 🕹 메인 루프
+# ==============================
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -94,11 +139,13 @@ while True:
         obs_speed += 0.2
         line_speed += 0.05
 
+    # 충돌 감지
     car_rect = pygame.Rect(car_x, car_y, 50, 90)
     obs_rect = pygame.Rect(obs_x, obs_y, 50, 80)
     if car_rect.colliderect(obs_rect):
         game_over()
 
+    # 화면 업데이트
     move_lines()
     screen.fill(GRAY)
     pygame.draw.rect(screen, (40, 40, 40), [0, 0, 50, HEIGHT])
@@ -107,5 +154,6 @@ while True:
     screen.blit(car_img, (car_x, car_y))
     screen.blit(obs_img, (obs_x, obs_y))
     show_score()
+
     pygame.display.flip()
     clock.tick(FPS)
