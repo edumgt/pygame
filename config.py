@@ -14,10 +14,26 @@ class DisplayConfig:
 @dataclass(frozen=True)
 class BalanceConfig:
     car_speed: int = 5
+    boost_speed: int = 11
+    boost_duration_frames: int = 45
+    boost_cooldown_frames: int = 240
     initial_obstacle_speed: float = 5.0
     obstacle_speed_increase: float = 0.2
     initial_line_speed: float = 5.0
     line_speed_increase: float = 0.05
+    score_tick_frames: int = 60
+
+
+@dataclass(frozen=True)
+class ItemConfig:
+    shield_spawn_interval_frames: int = 360
+    shield_fall_speed: float = 4.0
+    shield_size: tuple[int, int] = (28, 28)
+
+
+@dataclass(frozen=True)
+class SaveConfig:
+    highscore_file: str = "highscore.json"
 
 
 @dataclass(frozen=True)
@@ -30,6 +46,8 @@ class AssetConfig:
 
 DISPLAY = DisplayConfig()
 BALANCE = BalanceConfig()
+ITEMS = ItemConfig()
+SAVE = SaveConfig()
 ASSETS = AssetConfig()
 
 WHITE = (255, 255, 255)
