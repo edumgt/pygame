@@ -53,7 +53,7 @@ Pygame 기반의 2D 자동차 레이싱 게임과 Ursina 기반 3D 차량 뷰어
 
 #### macOS / Linux
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 ```
 
