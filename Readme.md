@@ -95,14 +95,7 @@ python car_race.py
 
 ---
 
-## 4-2. 3D 뷰어 실행
-```bash
-python car_race_3d.py
-```
 
-> `models/car.glb` 파일이 필요합니다. 파일이 없으면 뷰어가 정상 동작하지 않을 수 있습니다.
-
----
 
 ## 5) 설정 커스터마이징
 
