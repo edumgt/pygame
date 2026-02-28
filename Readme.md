@@ -85,6 +85,71 @@ python car_race.py
 
 ---
 
+## 3-1) Unity 기반 실행 방법 (명령어 중심)
+
+Unity 버전으로 실행하려면 `UnityCarRacing`의 C# 스크립트를 Unity 프로젝트에 넣어 실행합니다.
+
+### A. Unity 에디터에서 실행(권장)
+
+```bash
+# 1) 저장소 루트로 이동
+cd /workspace/Python-Car-Racing-Game
+
+# 2) Unity 전용 안내 문서 확인
+cat UnityCarRacing/README_Unity.md
+```
+
+그 다음 Unity Hub에서 아래 순서로 실행합니다.
+
+```text
+Unity Hub → New Project(2D Core) → 프로젝트 생성
+Unity 프로젝트의 Assets/Scripts 폴더에
+/workspace/Python-Car-Racing-Game/UnityCarRacing/Assets/Scripts/*.cs 복사
+씬 연결 후 Play 버튼(▶)으로 실행
+```
+
+### B. macOS에서 Unity CLI로 실행
+
+```bash
+# Unity Editor 경로 예시 (버전에 맞게 수정)
+/Applications/Unity/Hub/Editor/2022.3.62f1/Unity.app/Contents/MacOS/Unity \
+  -projectPath "/path/to/YourUnityProject" \
+  -quit -batchmode -logFile -
+```
+
+### C. Windows PowerShell에서 Unity CLI로 실행
+
+```powershell
+# Unity Editor 경로 예시 (버전에 맞게 수정)
+& "C:\Program Files\Unity\Hub\Editor\2022.3.62f1\Editor\Unity.exe" `
+  -projectPath "C:\path\to\YourUnityProject" `
+  -quit -batchmode -logFile -
+```
+
+### D. Linux에서 Unity CLI로 실행
+
+```bash
+# Unity 설치 경로는 환경에 따라 다를 수 있음
+unity-editor \
+  -projectPath "/path/to/YourUnityProject" \
+  -quit -batchmode -logFile -
+```
+
+### E. Unity 빌드 명령 예시 (CI/자동화용)
+
+```bash
+# BuildScript.PerformBuild 메서드를 미리 구현해 둔 경우
+unity-editor \
+  -batchmode -quit \
+  -projectPath "/path/to/YourUnityProject" \
+  -executeMethod BuildScript.PerformBuild \
+  -logFile -
+```
+
+> 참고: 이 저장소는 Unity 스크립트 샘플(`UnityCarRacing/Assets/Scripts`)을 제공합니다. 실제 실행/빌드를 위해서는 Unity에서 프로젝트를 생성하고 씬/프리팹/UI 연결을 완료해야 합니다.
+
+---
+
 ## 4) 빌드(실행 파일 만들기)
 
 배포용 단일 실행 파일은 `pyinstaller`로 만들 수 있습니다.
@@ -123,4 +188,3 @@ pyinstaller --onefile --noconsole car_race.py --add-data "car.png;." --add-data 
 ├── crash.wav
 └── highscore.json
 ```
-
