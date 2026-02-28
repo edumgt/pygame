@@ -220,3 +220,9 @@ pyinstaller --onefile --noconsole car_race.py --add-data "car.png;." --add-data 
 ├── crash.wav
 └── highscore.json
 ```
+
+### Unity 게임 화면
+![alt text](image.png)
+
+### Code 연동 화면
+![alt text](image-1.png)
