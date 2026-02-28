@@ -71,7 +71,7 @@ public class PlayerCarController : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (other.CompareTag("Obstacle"))
+        if (other.TryGetComponent<ObstacleMover>(out _))
         {
             GameManager.Instance?.HandleObstacleCollision();
         }
