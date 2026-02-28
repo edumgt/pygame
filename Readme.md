@@ -160,7 +160,7 @@ scripts/unity/run_unity_game.sh --batch-check
 # (Linux Unity 경로/WSL Windows Unity 경로 중 실제 설치 경로로 수정)
 "/opt/unityhub/Editor/2022.3.62f1/Editor/Unity" \
   -batchmode -quit \
-  -projectPath "/path/to/YourUnityProject" \
+  -projectPath "/home/Python-Car-Racing-Game/UnityCarRacing" \
   -executeMethod BuildScript.PerformBuild \
   -logFile -
 ```
