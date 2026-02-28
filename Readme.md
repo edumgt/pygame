@@ -126,20 +126,33 @@ Unity 프로젝트의 Assets/Scripts 폴더에
   -quit -batchmode -logFile -
 ```
 
-### D. Linux에서 Unity CLI로 실행
+### D. Linux/WSL에서 이 저장소 기준으로 바로 실행
 
 ```bash
-# Unity 설치 경로는 환경에 따라 다를 수 있음
-unity-editor \
-  -projectPath "/path/to/YourUnityProject" \
-  -quit -batchmode -logFile -
+# 1) 저장소 루트로 이동
+cd /home/Python-Car-Racing-Game
+
+# 2) (최초 1회) 실행 권한
+chmod +x scripts/unity/run_unity_game.sh
+
+# 3) Unity 프로젝트 경로 지정 후 실행
+# - 저장소 C# 스크립트를 프로젝트 Assets/Scripts로 자동 동기화
+# - Linux Unity(/opt/unityhub/...) 또는 WSL의 Windows Unity.exe 자동 탐지
+scripts/unity/run_unity_game.sh --project "/path/to/YourUnityProject"
+```
+
+배치 모드(컴파일 체크)만 하려면:
+
+```bash
+scripts/unity/run_unity_game.sh --project "/path/to/YourUnityProject" --batch-check
 ```
 
 ### E. Unity 빌드 명령 예시 (CI/자동화용)
 
 ```bash
 # BuildScript.PerformBuild 메서드를 미리 구현해 둔 경우
-unity-editor \
+# (Linux Unity 경로/WSL Windows Unity 경로 중 실제 설치 경로로 수정)
+"/opt/unityhub/Editor/2022.3.62f1/Editor/Unity" \
   -batchmode -quit \
   -projectPath "/path/to/YourUnityProject" \
   -executeMethod BuildScript.PerformBuild \
