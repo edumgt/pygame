@@ -9,8 +9,8 @@ public class PlayerCarController : MonoBehaviour
     [SerializeField] private float boostCooldown = 4f;
 
     [Header("Road Bounds")]
-    [SerializeField] private float minX = -2.2f;
-    [SerializeField] private float maxX = 2.2f;
+    [SerializeField] private float minX = -4f;
+    [SerializeField] private float maxX = 4f;
 
     private float boostTimer;
     private float cooldownTimer;
@@ -69,7 +69,7 @@ public class PlayerCarController : MonoBehaviour
         transform.position = initialPosition;
     }
 
-    private void OnTriggerEnter2D(Collider2D other)
+    private void OnTriggerEnter(Collider other)
     {
         if (other.TryGetComponent<ObstacleMover>(out _))
         {

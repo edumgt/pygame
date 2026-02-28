@@ -173,6 +173,7 @@ public class GameManager : MonoBehaviour
     private void EnsureRuntimeSetup()
     {
         EnsureMainCamera();
+        EnsureEnvironment();
         if (player == null)
         {
             player = FindAnyObjectByType<PlayerCarController>();
@@ -208,31 +209,22 @@ public class GameManager : MonoBehaviour
             camGo.tag = "MainCamera";
         }
 
-        cam.orthographic = true;
-        cam.orthographicSize = 6f;
-        cam.transform.position = new Vector3(0f, 0f, -10f);
-        cam.backgroundColor = new Color(0.08f, 0.1f, 0.12f, 1f);
+        cam.orthographic = false;
+        cam.fieldOfView = 62f;
+        cam.transform.position = new Vector3(0f, 11f, -13f);
+        cam.transform.rotation = Quaternion.Euler(32f, 0f, 0f);
+        cam.backgroundColor = new Color(0.18f, 0.24f, 0.35f, 1f);
     }
 
     private static PlayerCarController CreateDefaultPlayer()
     {
-        var go = new GameObject("Player");
-        go.transform.position = new Vector3(0f, -4f, 0f);
-
-        var renderer = go.AddComponent<SpriteRenderer>();
-        renderer.sprite = RuntimeSpriteFactory.GetSquareSprite();
-        renderer.color = new Color(0.2f, 0.8f, 1f, 1f);
-        go.transform.localScale = new Vector3(0.8f, 1.2f, 1f);
-
-        var collider = go.AddComponent<BoxCollider2D>();
-        collider.isTrigger = true;
-
-        var rb = go.AddComponent<Rigidbody2D>();
-        rb.gravityScale = 0f;
-        rb.bodyType = RigidbodyType2D.Kinematic;
-        rb.freezeRotation = true;
-
+        var go = RuntimeCarFactory.CreateSportsCar(new Vector3(0f, 0.5f, -8f));
         return go.AddComponent<PlayerCarController>();
+    }
+
+    private static void EnsureEnvironment()
+    {
+        RuntimeRoadFactory.BuildIfMissing();
     }
 
     private void OnGUI()

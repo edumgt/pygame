@@ -3,7 +3,7 @@ using UnityEngine;
 public class ObstacleMover : MonoBehaviour
 {
     [SerializeField] private float moveSpeed = 4f;
-    [SerializeField] private float despawnY = -7f;
+    [SerializeField] private float despawnZ = -12f;
 
     public void SetSpeed(float speed)
     {
@@ -12,9 +12,9 @@ public class ObstacleMover : MonoBehaviour
 
     private void Update()
     {
-        transform.Translate(Vector3.down * moveSpeed * Time.deltaTime);
+        transform.Translate(Vector3.back * moveSpeed * Time.deltaTime, Space.World);
 
-        if (transform.position.y < despawnY)
+        if (transform.position.z < despawnZ)
         {
             GameManager.Instance?.AddScore(1);
             Destroy(gameObject);
