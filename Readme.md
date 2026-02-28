@@ -1,66 +1,53 @@
-# Python Car Racing Game
+# Python Car Racing Game (Advanced)
 
-Pygame 기반의 2D 자동차 레이싱 게임과 Ursina 기반 3D 차량 뷰어를 함께 포함한 프로젝트입니다.
-
----
-
-## Unity 전환 안내
-
-요청사항에 맞춰 Unity 기반 구현을 `UnityCarRacing/`에 추가했습니다.
-
-- Unity 스크립트: `UnityCarRacing/Assets/Scripts/`
-- 전환/씬 구성 가이드: `UnityCarRacing/README_Unity.md`
-
-기존 Python 버전은 그대로 유지되며, Unity 프로젝트에서 스크립트를 연결해 바로 전환 작업을 이어갈 수 있습니다.
+Pygame 기반 2D 자동차 레이싱 게임입니다.  
+이번 버전에서는 차량 스탯/트랙 테마/적 AI/미션/모바일 입력까지 포함된 고도화 버전으로 업데이트했습니다.
 
 ---
 
-## 1) 이번 고도화 내용
+## 1) 고도화 기능
 
-2D 게임(`car_race.py`) 기준으로 아래 기능을 추가했습니다.
+- **차량 선택 시스템 (1/2/3 키)**
+  - Sprint: 높은 가속, 안정적 핸들링
+  - Interceptor: 최고속 특화
+  - Drift: 핸들링 특화
+  - 각 차량은 **가속/최고속/핸들링** 스탯이 다릅니다.
 
-- **부스트 시스템**
-  - `Left Shift`로 순간 가속 사용
-  - 지속 시간/쿨다운을 설정값으로 관리
-- **실드 아이템 시스템**
-  - 일정 주기마다 실드 아이템 생성
-  - 획득 시 1회 충돌 무효화
-- **HUD 강화**
-  - 현재 점수, 최고 점수, 부스트 상태(READY/쿨다운) 표시
-- **최고 점수 저장**
-  - 게임 오버 시 `highscore.json`에 최고 점수 자동 저장
-  - 재실행 후 최고 점수 유지
-- **시간 기반 점수 증가**
-  - 장애물 회피 점수 외에도 생존 시간 기반 점수 누적
+- **트랙 테마 3종**
+  - 도심
+  - 사막
+  - 야간 네온
+  - 라운드 시작 시 랜덤으로 테마가 적용됩니다.
 
----
+- **적 차량 AI**
+  - 다수 적 차량이 등장
+  - AI가 주기적으로 **차선 변경**
+  - 플레이어 근접 시 **블로킹(플레이어 차선 추적)** 행동 수행
 
-## 2) 프로젝트 구조
+- **미션 시스템**
+  - 예: 20초 생존 / 25초 노부스트
+  - 성공 시 보너스 점수 획득
+  - 노부스트 미션 도중 부스트 사용 시 미션 실패 처리
 
-```text
-.
-├── car_race.py              # 2D 게임 실행 진입점
-├── car_race_3d.py           # 3D 차량 뷰어
-├── config.py                # 화면/밸런스/아이템/저장 설정
-├── core/
-│   └── game.py              # 씬/게임 루프/입력/충돌/HUD 처리
-├── systems/
-│   ├── resource_loader.py   # 이미지/사운드 로딩
-│   └── save_system.py       # 최고 점수 저장 시스템
-├── car.png
-├── obstacle.png
-├── crash.wav
-└── Readme.md
-```
+- **모바일 대응 입력**
+  - 화면 하단 **좌/우/부스트 버튼**
+  - **스와이프 입력**으로 차선 이동 보조
+  - PC에서도 마우스로 동일 UI 테스트 가능
+
+- 기존 기능 유지
+  - 실드 아이템(1회 충돌 무효)
+  - 부스트 쿨다운
+  - 최고 점수 저장(`highscore.json`)
 
 ---
 
-## 3) 설치 가이드 (권장)
+## 2) 설치
 
-### 3-1. Python 버전
-- **Python 3.10 이상 권장**
+### 요구사항
+- Python 3.10+
+- pygame
 
-### 3-2. 가상환경 생성 및 활성화
+### 가상환경(권장)
 
 #### macOS / Linux
 ```bash
@@ -74,82 +61,66 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-### 3-3. 의존성 설치
+### 의존성 설치
 ```bash
-pip install pygame ursina panda3d
-```
-
-> 2D 게임만 실행할 경우 최소 `pygame`만 있어도 됩니다.
-
----
-
-## 4) 실행 매뉴얼
-
-## 4-1. 2D 게임 실행
-```bash
-python car_race.py
-```
-
-### 조작 방법
-- `← / →`: 좌우 이동
-- `Left Shift`: 부스트 사용
-- `P`: 일시정지 / 해제
-- `ESC`: 종료
-- `SPACE`: 시작 화면에서 게임 시작
-- `Y / N`: 게임 오버 후 재시작/종료
-
-### 게임 규칙
-1. 장애물을 피하면 점수가 증가합니다.
-2. 게임이 진행될수록 장애물 속도가 빨라집니다.
-3. 실드 아이템(파란색 타원)을 획득하면 1회 충돌이 무효화됩니다.
-4. 충돌 시 게임 오버이며, 최고 점수는 자동 저장됩니다.
-
----
-
-
-
-## 5) 설정 커스터마이징
-
-`config.py`에서 주요 값을 조정할 수 있습니다.
-
-- `DisplayConfig`: 해상도, FPS, 타이틀
-- `BalanceConfig`: 기본 속도, 부스트, 난이도 증가율, 시간 점수 주기
-- `ItemConfig`: 실드 생성 주기/크기/낙하 속도
-- `SaveConfig`: 최고 점수 저장 파일 경로
-
-예시 조정 항목:
-- 더 빠른 게임: `initial_obstacle_speed`, `obstacle_speed_increase` 상승
-- 부스트 남용 방지: `boost_cooldown_frames` 증가
-- 실드 드랍 희소화: `shield_spawn_interval_frames` 증가
-
----
-
-## 6) 트러블슈팅
-
-### Q1. 사운드가 나오지 않아요
-- 시스템 오디오 장치 상태 확인
-- `crash.wav` 파일 존재 여부 확인
-- 일부 환경에서는 믹서 초기화 실패 가능 → 오디오 드라이버 점검
-
-### Q2. 최고 점수가 저장되지 않아요
-- 실행 디렉터리에 `highscore.json` 생성 권한이 있는지 확인
-- 파일이 깨졌다면 삭제 후 재실행
-
-### Q3. 이미지가 보이지 않아요
-- `car.png`, `obstacle.png` 누락 여부 확인
-- 누락 시 대체 단색 스프라이트가 표시됩니다
-
----
-
-## 7) 빠른 시작 요약
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows는 .\.venv\Scripts\Activate.ps1
 pip install pygame
-python car_race.py
 ```
 
 ---
 
-원하면 다음 단계로 **아이템 다양화(슬로우/더블스코어)**, **설정 UI**, **랭킹 다중 저장(JSON 배열)** 까지 확장할 수 있습니다.
+## 3) 실행 방법
+
+```bash
+python car_race.py
+```
+
+### 조작법
+- `SPACE`: 게임 시작
+- `1 / 2 / 3`: 차량 선택 (시작 화면)
+- `← / →`: 이동
+- `Left Shift`: 부스트
+- `P`: 일시정지
+- `Y / N`: 게임오버 후 재시작/종료
+- 모바일/터치: 하단 버튼 + 스와이프
+
+---
+
+## 4) 빌드(실행 파일 만들기)
+
+배포용 단일 실행 파일은 `pyinstaller`로 만들 수 있습니다.
+
+```bash
+pip install pyinstaller
+pyinstaller --onefile --noconsole car_race.py
+```
+
+빌드 완료 후:
+- `dist/car_race` (Linux/macOS)
+- `dist/car_race.exe` (Windows)
+
+> 사운드/이미지 리소스를 함께 배포하려면 PyInstaller spec 또는 `--add-data` 옵션을 추가해 주세요.
+
+예시(Windows):
+```powershell
+pyinstaller --onefile --noconsole car_race.py --add-data "car.png;." --add-data "obstacle.png;." --add-data "crash.wav;."
+```
+
+---
+
+## 5) 프로젝트 구조
+
+```text
+.
+├── car_race.py
+├── config.py
+├── core/
+│   └── game.py
+├── systems/
+│   ├── resource_loader.py
+│   └── save_system.py
+├── car.png
+├── obstacle.png
+├── crash.wav
+└── highscore.json
+```
+

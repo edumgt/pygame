@@ -8,20 +8,23 @@ class DisplayConfig:
     width: int = 400
     height: int = 600
     fps: int = 60
-    title: str = "🚗 자동차 경주 (Scene Manager 적용)"
+    title: str = "🚗 자동차 경주 (Advanced Edition)"
 
 
 @dataclass(frozen=True)
 class BalanceConfig:
-    car_speed: int = 5
-    boost_speed: int = 11
-    boost_duration_frames: int = 45
+    max_player_speed: float = 9.0
+    lane_change_speed: float = 0.15
+    boost_extra_speed: float = 4.0
+    boost_duration_frames: int = 40
     boost_cooldown_frames: int = 240
-    initial_obstacle_speed: float = 5.0
-    obstacle_speed_increase: float = 0.2
+    initial_enemy_speed: float = 4.2
+    enemy_speed_increase: float = 0.12
     initial_line_speed: float = 5.0
-    line_speed_increase: float = 0.05
+    line_speed_increase: float = 0.04
     score_tick_frames: int = 60
+    lane_count: int = 3
+    enemy_count: int = 3
 
 
 @dataclass(frozen=True)
@@ -55,3 +58,4 @@ GRAY = (60, 60, 60)
 RED = (200, 30, 30)
 YELLOW = (255, 230, 50)
 ROAD_EDGE = (40, 40, 40)
+BLACK = (15, 15, 15)
