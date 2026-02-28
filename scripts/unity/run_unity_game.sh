@@ -9,14 +9,15 @@ MODE="editor"
 SYNC_SCRIPTS=1
 PROJECT_PATH=""
 UNITY_BIN="${UNITY_EDITOR:-}"
+DEFAULT_PROJECT_PATH="${REPO_ROOT}/UnityProject"
 
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/unity/run_unity_game.sh --project /abs/or/relative/UnityProject [options]
+  scripts/unity/run_unity_game.sh [--project /abs/or/relative/UnityProject] [options]
 
 Options:
-  --project PATH      Unity project directory (required)
+  --project PATH      Unity project directory (optional)
   --unity PATH        Explicit Unity executable path
   --batch-check       Run batchmode compile check and exit
   --no-sync           Do not copy repo C# scripts into project Assets/Scripts
@@ -29,15 +30,56 @@ Examples:
 EOF
 }
 
+detect_project_path() {
+  if [[ -d "$PWD/Assets" && -d "$PWD/ProjectSettings" ]]; then
+    echo "$PWD"
+    return 0
+  fi
+
+  if [[ -d "$DEFAULT_PROJECT_PATH/Assets" && -d "$DEFAULT_PROJECT_PATH/ProjectSettings" ]]; then
+    echo "$DEFAULT_PROJECT_PATH"
+    return 0
+  fi
+
+  local candidates=()
+  while IFS= read -r line; do
+    candidates+=("$line")
+  done < <(find "$REPO_ROOT" -maxdepth 4 -type d -name ProjectSettings -printf '%h\n' 2>/dev/null | sort -u)
+
+  if [[ "${#candidates[@]}" -eq 1 ]]; then
+    echo "${candidates[0]}"
+    return 0
+  fi
+
+  return 1
+}
+
 abs_path() {
   local input_path="$1"
+  local parent
+
+  if [[ "$input_path" = /* ]]; then
+    echo "$input_path"
+    return 0
+  fi
+
   if [[ -d "$input_path" ]]; then
     (cd "$input_path" && pwd)
-  else
-    local parent
-    parent="$(cd "$(dirname "$input_path")" && pwd)"
-    echo "${parent}/$(basename "$input_path")"
+    return 0
   fi
+
+  parent="$(dirname "$input_path")"
+  if [[ "$parent" == "." ]]; then
+    echo "$PWD/$(basename "$input_path")"
+    return 0
+  fi
+
+  if [[ -d "$parent" ]]; then
+    echo "$(cd "$parent" && pwd)/$(basename "$input_path")"
+    return 0
+  fi
+
+  echo "$PWD/$input_path"
 }
 
 is_wsl() {
@@ -102,32 +144,29 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$PROJECT_PATH" ]]; then
-  echo "--project is required." >&2
-  usage
-  exit 1
+  if PROJECT_PATH="$(detect_project_path)"; then
+    echo "Detected Unity project: $PROJECT_PATH"
+  else
+    PROJECT_PATH="$DEFAULT_PROJECT_PATH"
+    echo "No Unity project detected. Using default project path: $PROJECT_PATH"
+  fi
 fi
 
 PROJECT_PATH="$(abs_path "$PROJECT_PATH")"
 
-if [[ ! -d "$PROJECT_PATH" ]]; then
-  echo "Project directory not found: $PROJECT_PATH" >&2
-  exit 1
-fi
-
-if [[ ! -d "$PROJECT_PATH/Assets" ]]; then
-  echo "Unity project looks invalid (missing Assets): $PROJECT_PATH" >&2
+if [[ "$PROJECT_PATH" == *"<"* || "$PROJECT_PATH" == *">"* ]]; then
+  cat <<'EOF' >&2
+Invalid --project path: placeholder text detected.
+Replace <...> with a real directory path.
+Example:
+  ./scripts/unity/run_unity_game.sh --project "/mnt/c/Users/1/Documents/UnityProjects/MyRacingGame"
+EOF
   exit 1
 fi
 
 if [[ ! -d "$SOURCE_SCRIPTS_DIR" ]]; then
   echo "Source script directory not found: $SOURCE_SCRIPTS_DIR" >&2
   exit 1
-fi
-
-if [[ "$SYNC_SCRIPTS" -eq 1 ]]; then
-  mkdir -p "$PROJECT_PATH/Assets/Scripts"
-  cp -f "$SOURCE_SCRIPTS_DIR"/*.cs "$PROJECT_PATH/Assets/Scripts/"
-  echo "Synced C# scripts to: $PROJECT_PATH/Assets/Scripts"
 fi
 
 detect_unity
@@ -161,9 +200,43 @@ if [[ "$UNITY_BIN" == *.exe ]]; then
 fi
 
 if [[ "$MODE" == "batch" ]]; then
+  if [[ ! -d "$PROJECT_PATH/Assets" || ! -d "$PROJECT_PATH/ProjectSettings" ]]; then
+    cat <<EOF >&2
+Cannot run --batch-check because project is not initialized:
+  $PROJECT_PATH
+Run editor mode once first:
+  ./scripts/unity/run_unity_game.sh --project "$PROJECT_PATH"
+EOF
+    exit 1
+  fi
+
+  if [[ "$SYNC_SCRIPTS" -eq 1 ]]; then
+    mkdir -p "$PROJECT_PATH/Assets/Scripts"
+    cp -f "$SOURCE_SCRIPTS_DIR"/*.cs "$PROJECT_PATH/Assets/Scripts/"
+    echo "Synced C# scripts to: $PROJECT_PATH/Assets/Scripts"
+  fi
+
   echo "Running Unity batch check..."
   "$UNITY_BIN" -projectPath "$PROJECT_ARG" -quit -batchmode -logFile -
   exit $?
+fi
+
+if [[ ! -d "$PROJECT_PATH/Assets" || ! -d "$PROJECT_PATH/ProjectSettings" ]]; then
+  echo "Unity project not initialized yet: $PROJECT_PATH"
+  mkdir -p "$PROJECT_PATH/Assets/Scripts"
+  if [[ "$SYNC_SCRIPTS" -eq 1 ]]; then
+    cp -f "$SOURCE_SCRIPTS_DIR"/*.cs "$PROJECT_PATH/Assets/Scripts/"
+    echo "Seeded C# scripts to: $PROJECT_PATH/Assets/Scripts"
+  fi
+  echo "Launching Unity Editor for first-time project initialization..."
+  "$UNITY_BIN" -projectPath "$PROJECT_ARG"
+  exit $?
+fi
+
+if [[ "$SYNC_SCRIPTS" -eq 1 ]]; then
+  mkdir -p "$PROJECT_PATH/Assets/Scripts"
+  cp -f "$SOURCE_SCRIPTS_DIR"/*.cs "$PROJECT_PATH/Assets/Scripts/"
+  echo "Synced C# scripts to: $PROJECT_PATH/Assets/Scripts"
 fi
 
 echo "Launching Unity Editor..."

@@ -135,16 +135,22 @@ cd /home/Python-Car-Racing-Game
 # 2) (최초 1회) 실행 권한
 chmod +x scripts/unity/run_unity_game.sh
 
-# 3) Unity 프로젝트 경로 지정 후 실행
+# 3) 실행
+# - 기본 프로젝트 경로: /home/Python-Car-Racing-Game/UnityProject
+# - 프로젝트가 없으면 해당 경로로 에디터를 열어 최초 초기화
 # - 저장소 C# 스크립트를 프로젝트 Assets/Scripts로 자동 동기화
 # - Linux Unity(/opt/unityhub/...) 또는 WSL의 Windows Unity.exe 자동 탐지
-scripts/unity/run_unity_game.sh --project "/path/to/YourUnityProject"
+scripts/unity/run_unity_game.sh
+
+# 다른 프로젝트를 쓰고 싶으면 경로 지정
+scripts/unity/run_unity_game.sh --project "/mnt/c/Users/1/Documents/UnityProjects/MyRacingGame"
 ```
 
 배치 모드(컴파일 체크)만 하려면:
 
 ```bash
-scripts/unity/run_unity_game.sh --project "/path/to/YourUnityProject" --batch-check
+# 최초 1회 에디터 실행으로 프로젝트 초기화 후 사용
+scripts/unity/run_unity_game.sh --batch-check
 ```
 
 ### E. Unity 빌드 명령 예시 (CI/자동화용)
