@@ -4,6 +4,17 @@ Pygame 기반의 2D 자동차 레이싱 게임과 Ursina 기반 3D 차량 뷰어
 
 ---
 
+## Unity 전환 안내
+
+요청사항에 맞춰 Unity 기반 구현을 `UnityCarRacing/`에 추가했습니다.
+
+- Unity 스크립트: `UnityCarRacing/Assets/Scripts/`
+- 전환/씬 구성 가이드: `UnityCarRacing/README_Unity.md`
+
+기존 Python 버전은 그대로 유지되며, Unity 프로젝트에서 스크립트를 연결해 바로 전환 작업을 이어갈 수 있습니다.
+
+---
+
 ## 1) 이번 고도화 내용
 
 2D 게임(`car_race.py`) 기준으로 아래 기능을 추가했습니다.
