@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 SOURCE_SCRIPTS_DIR="${REPO_ROOT}/UnityCarRacing/Assets/Scripts"
+SOURCE_BUILD_SCRIPT="${REPO_ROOT}/UnityProject/Assets/Editor/BuildScript.cs"
 
 MODE="editor"
 SYNC_SCRIPTS=1
@@ -28,6 +29,34 @@ Examples:
   scripts/unity/run_unity_game.sh --project ./UnityProject --batch-check
   scripts/unity/run_unity_game.sh --project ./UnityProject --unity "/opt/unityhub/Editor/2022.3.62f1/Editor/Unity"
 EOF
+}
+
+sync_sources() {
+  mkdir -p "$PROJECT_PATH/Assets/Scripts"
+  cp -f "$SOURCE_SCRIPTS_DIR"/*.cs "$PROJECT_PATH/Assets/Scripts/"
+
+  if [[ -f "$SOURCE_BUILD_SCRIPT" ]]; then
+    mkdir -p "$PROJECT_PATH/Assets/Editor"
+    cp -f "$SOURCE_BUILD_SCRIPT" "$PROJECT_PATH/Assets/Editor/BuildScript.cs"
+    echo "Synced C# scripts + BuildScript to: $PROJECT_PATH/Assets"
+  else
+    echo "Synced C# scripts to: $PROJECT_PATH/Assets/Scripts"
+    echo "Warning: BuildScript not found at $SOURCE_BUILD_SCRIPT" >&2
+  fi
+}
+
+ensure_tmp_dependency() {
+  local manifest="$PROJECT_PATH/Packages/manifest.json"
+  if [[ ! -f "$manifest" ]]; then
+    return 0
+  fi
+
+  if grep -q '"com.unity.textmeshpro"' "$manifest"; then
+    return 0
+  fi
+
+  sed -i '0,/"dependencies"[[:space:]]*:[[:space:]]*{/s//"dependencies": {\n    "com.unity.textmeshpro": "3.0.9",/' "$manifest"
+  echo "Added package dependency: com.unity.textmeshpro (3.0.9)"
 }
 
 detect_project_path() {
@@ -84,6 +113,17 @@ abs_path() {
 
 is_wsl() {
   grep -qiE '(microsoft|wsl)' /proc/sys/kernel/osrelease 2>/dev/null
+}
+
+is_project_initialized() {
+  [[ -d "$PROJECT_PATH/Assets" && -d "$PROJECT_PATH/ProjectSettings" ]]
+}
+
+initialize_project_batch() {
+  echo "Unity project not initialized yet: $PROJECT_PATH"
+  echo "Creating Unity project in batch mode..."
+  mkdir -p "$PROJECT_PATH"
+  "$UNITY_BIN" -createProject "$PROJECT_ARG" -quit -batchmode -logFile -
 }
 
 detect_unity() {
@@ -192,6 +232,15 @@ fi
 PROJECT_ARG="$PROJECT_PATH"
 if [[ "$UNITY_BIN" == *.exe ]]; then
   if is_wsl; then
+    if [[ "$PROJECT_PATH" != /mnt/* ]]; then
+      cat <<EOF >&2
+Windows Unity on WSL requires a Windows-mounted path (/mnt/*), not:
+  $PROJECT_PATH
+Use a path like:
+  --project "/mnt/c/Users/<You>/Documents/UnityProjects/MyRacingGame"
+EOF
+      exit 1
+    fi
     PROJECT_ARG="$(wslpath -w "$PROJECT_PATH")"
   else
     echo "Windows Unity executable detected outside WSL: $UNITY_BIN" >&2
@@ -200,33 +249,24 @@ if [[ "$UNITY_BIN" == *.exe ]]; then
 fi
 
 if [[ "$MODE" == "batch" ]]; then
-  if [[ ! -d "$PROJECT_PATH/Assets" || ! -d "$PROJECT_PATH/ProjectSettings" ]]; then
-    cat <<EOF >&2
-Cannot run --batch-check because project is not initialized:
-  $PROJECT_PATH
-Run editor mode once first:
-  ./scripts/unity/run_unity_game.sh --project "$PROJECT_PATH"
-EOF
-    exit 1
+  if ! is_project_initialized; then
+    initialize_project_batch
   fi
 
   if [[ "$SYNC_SCRIPTS" -eq 1 ]]; then
-    mkdir -p "$PROJECT_PATH/Assets/Scripts"
-    cp -f "$SOURCE_SCRIPTS_DIR"/*.cs "$PROJECT_PATH/Assets/Scripts/"
-    echo "Synced C# scripts to: $PROJECT_PATH/Assets/Scripts"
+    sync_sources
   fi
+  ensure_tmp_dependency
 
   echo "Running Unity batch check..."
   "$UNITY_BIN" -projectPath "$PROJECT_ARG" -quit -batchmode -logFile -
   exit $?
 fi
 
-if [[ ! -d "$PROJECT_PATH/Assets" || ! -d "$PROJECT_PATH/ProjectSettings" ]]; then
+if ! is_project_initialized; then
   echo "Unity project not initialized yet: $PROJECT_PATH"
-  mkdir -p "$PROJECT_PATH/Assets/Scripts"
   if [[ "$SYNC_SCRIPTS" -eq 1 ]]; then
-    cp -f "$SOURCE_SCRIPTS_DIR"/*.cs "$PROJECT_PATH/Assets/Scripts/"
-    echo "Seeded C# scripts to: $PROJECT_PATH/Assets/Scripts"
+    sync_sources
   fi
   echo "Launching Unity Editor for first-time project initialization..."
   "$UNITY_BIN" -projectPath "$PROJECT_ARG"
@@ -234,10 +274,9 @@ if [[ ! -d "$PROJECT_PATH/Assets" || ! -d "$PROJECT_PATH/ProjectSettings" ]]; th
 fi
 
 if [[ "$SYNC_SCRIPTS" -eq 1 ]]; then
-  mkdir -p "$PROJECT_PATH/Assets/Scripts"
-  cp -f "$SOURCE_SCRIPTS_DIR"/*.cs "$PROJECT_PATH/Assets/Scripts/"
-  echo "Synced C# scripts to: $PROJECT_PATH/Assets/Scripts"
+  sync_sources
 fi
+ensure_tmp_dependency
 
 echo "Launching Unity Editor..."
 "$UNITY_BIN" -projectPath "$PROJECT_ARG"

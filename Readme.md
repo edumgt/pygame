@@ -146,21 +146,34 @@ scripts/unity/run_unity_game.sh
 scripts/unity/run_unity_game.sh --project "/mnt/c/Users/1/Documents/UnityProjects/MyRacingGame"
 ```
 
+> WSL + Windows Unity.exe 조합에서는 `--project`를 `/mnt/c/...` 같은 Windows 마운트 경로로 지정해야 합니다.  
+> `/home/...` 경로는 Unity에서 프로젝트 생성/빌드가 실패할 수 있습니다.
+
 배치 모드(컴파일 체크)만 하려면:
 
 ```bash
-# 최초 1회 에디터 실행으로 프로젝트 초기화 후 사용
+# 프로젝트 미초기화 상태면 자동으로 생성 후 컴파일 체크 수행
 scripts/unity/run_unity_game.sh --batch-check
 ```
 
 ### E. Unity 빌드 명령 예시 (CI/자동화용)
 
 ```bash
-# BuildScript.PerformBuild 메서드를 미리 구현해 둔 경우
+# 저장소 포함 BuildScript 사용 (UnityProject/Assets/Editor/BuildScript.cs)
 # (Linux Unity 경로/WSL Windows Unity 경로 중 실제 설치 경로로 수정)
 "/opt/unityhub/Editor/2022.3.62f1/Editor/Unity" \
   -batchmode -quit \
-  -projectPath "/home/Python-Car-Racing-Game/UnityCarRacing" \
+  -projectPath "/home/Python-Car-Racing-Game/UnityProject" \
+  -executeMethod BuildScript.PerformBuild \
+  -logFile -
+```
+
+WSL에서 Windows Unity.exe를 사용할 때는:
+
+```bash
+"/mnt/c/Program Files/Unity/Hub/Editor/2022.3.62f1/Editor/Unity.exe" \
+  -batchmode -quit \
+  -projectPath "C:\Users\1\Documents\UnityProjects\MyRacingGame" \
   -executeMethod BuildScript.PerformBuild \
   -logFile -
 ```
