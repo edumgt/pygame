@@ -2,21 +2,47 @@ using UnityEngine;
 
 public class MissileProjectile : MonoBehaviour
 {
-    [SerializeField] private float speed = 24f;
-    [SerializeField] private float maxLifetime = 2.6f;
-    [SerializeField] private float hitRadius = 0.9f;
-    [SerializeField] private float turnRate = 8f;
-
-    private float lifetimeRemaining;
-    private Vector3 travelDirection = Vector3.forward;
-    private ObstacleMover lockedTarget;
-
-    public static MissileProjectile Create(Vector3 position, Vector3 direction, ObstacleMover target)
+    private enum OwnerType
     {
-        var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        go.name = "Missile";
+        Player,
+        Enemy
+    }
+
+    [SerializeField] private float speed = 28f;
+    [SerializeField] private float maxLifetime = 3f;
+    [SerializeField] private float hitRadius = 0.35f;
+    [SerializeField] private float damage = 20f;
+
+    private OwnerType ownerType;
+    private Vector3 direction = Vector3.forward;
+    private float lifetimeRemaining;
+    private Transform ownerRoot;
+    private Color impactColor = Color.yellow;
+
+    public static MissileProjectile CreatePlayerShell(Vector3 position, Vector3 direction, float speed, float damage, Transform ownerRoot)
+    {
+        return CreateShell(position, direction, speed, damage, OwnerType.Player, new Color(1f, 0.7f, 0.2f, 1f), Color.yellow, ownerRoot);
+    }
+
+    public static MissileProjectile CreateEnemyShell(Vector3 position, Vector3 direction, float speed, float damage, Transform ownerRoot)
+    {
+        return CreateShell(position, direction, speed, damage, OwnerType.Enemy, new Color(1f, 0.28f, 0.2f, 1f), new Color(1f, 0.4f, 0.2f, 1f), ownerRoot);
+    }
+
+    private static MissileProjectile CreateShell(
+        Vector3 position,
+        Vector3 direction,
+        float speed,
+        float damage,
+        OwnerType owner,
+        Color shellColor,
+        Color hitColor,
+        Transform ownerRoot)
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        go.name = owner == OwnerType.Player ? "PlayerShell" : "EnemyShell";
         go.transform.position = position;
-        go.transform.localScale = new Vector3(0.18f, 0.45f, 0.18f);
+        go.transform.localScale = new Vector3(0.24f, 0.24f, 0.24f);
 
         Vector3 heading = direction.sqrMagnitude > 0.001f ? direction.normalized : Vector3.forward;
         go.transform.rotation = Quaternion.LookRotation(heading, Vector3.up);
@@ -24,7 +50,7 @@ public class MissileProjectile : MonoBehaviour
         var renderer = go.GetComponent<Renderer>();
         if (renderer != null)
         {
-            renderer.material = RuntimeMaterialFactory.Create(new Color(1f, 0.45f, 0.2f, 1f));
+            renderer.material = RuntimeMaterialFactory.Create(shellColor);
         }
 
         Collider col = go.GetComponent<Collider>();
@@ -34,14 +60,18 @@ public class MissileProjectile : MonoBehaviour
         }
 
         var projectile = go.AddComponent<MissileProjectile>();
-        projectile.Initialize(heading, target);
+        projectile.Initialize(owner, heading, speed, damage, hitColor, ownerRoot);
         return projectile;
     }
 
-    public void Initialize(Vector3 direction, ObstacleMover target)
+    private void Initialize(OwnerType owner, Vector3 heading, float shellSpeed, float shellDamage, Color shellImpactColor, Transform shellOwner)
     {
-        travelDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : Vector3.forward;
-        lockedTarget = target;
+        ownerType = owner;
+        direction = heading.sqrMagnitude > 0.001f ? heading.normalized : Vector3.forward;
+        speed = Mathf.Max(8f, shellSpeed);
+        damage = Mathf.Max(1f, shellDamage);
+        impactColor = shellImpactColor;
+        ownerRoot = shellOwner;
         lifetimeRemaining = maxLifetime;
     }
 
@@ -60,30 +90,69 @@ public class MissileProjectile : MonoBehaviour
             return;
         }
 
-        Vector3 desiredDirection = travelDirection;
-        if (lockedTarget != null && lockedTarget.IsAlive)
-        {
-            Vector3 toTarget = lockedTarget.transform.position - transform.position;
-            if (toTarget.sqrMagnitude > 0.001f)
-            {
-                desiredDirection = toTarget.normalized;
-            }
-        }
-
-        travelDirection = Vector3.Slerp(travelDirection, desiredDirection, turnRate * Time.deltaTime).normalized;
-        transform.position += travelDirection * speed * Time.deltaTime;
-        transform.rotation = Quaternion.LookRotation(travelDirection, Vector3.up);
-
-        if (lockedTarget == null || !lockedTarget.IsAlive)
+        Vector3 nextPosition = transform.position + direction * (speed * Time.deltaTime);
+        if (TryResolveHit(nextPosition))
         {
             return;
         }
 
-        float sqrDistance = (lockedTarget.transform.position - transform.position).sqrMagnitude;
-        if (sqrDistance <= hitRadius * hitRadius)
+        transform.position = nextPosition;
+        transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
+    }
+
+    private bool TryResolveHit(Vector3 probePosition)
+    {
+        Collider[] hits = Physics.OverlapSphere(probePosition, hitRadius, ~0, QueryTriggerInteraction.Collide);
+        for (int i = 0; i < hits.Length; i++)
         {
-            lockedTarget.ApplyMissileHit();
-            Destroy(gameObject);
+            Collider hit = hits[i];
+            if (ownerRoot != null && (hit.transform == ownerRoot || hit.transform.IsChildOf(ownerRoot)))
+            {
+                continue;
+            }
+
+            if (ownerType == OwnerType.Player)
+            {
+                ObstacleMover enemy = hit.GetComponentInParent<ObstacleMover>();
+                if (enemy != null && enemy.IsAlive)
+                {
+                    enemy.ApplyDamage(damage);
+                    GameManager.Instance?.RegisterPlayerHit();
+                    SpawnImpact(probePosition);
+                    Destroy(gameObject);
+                    return true;
+                }
+            }
+            else
+            {
+                PlayerCarController player = hit.GetComponentInParent<PlayerCarController>();
+                if (player != null)
+                {
+                    player.ApplyDamage(damage);
+                    SpawnImpact(probePosition);
+                    Destroy(gameObject);
+                    return true;
+                }
+            }
         }
+
+        return false;
+    }
+
+    private void SpawnImpact(Vector3 position)
+    {
+        var blast = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        blast.name = "ShellImpact";
+        blast.transform.position = position;
+        blast.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
+        blast.GetComponent<Renderer>().material = RuntimeMaterialFactory.Create(impactColor);
+
+        Collider col = blast.GetComponent<Collider>();
+        if (col != null)
+        {
+            Destroy(col);
+        }
+
+        Destroy(blast, 0.14f);
     }
 }

@@ -10,24 +10,26 @@ public class GameManager : MonoBehaviour
     [SerializeField] private UIController uiController;
 
     [Header("Game Rules")]
-    [SerializeField] private int targetDestroyGoal = 12;
-    [SerializeField] private int baseLives = 3;
-    [SerializeField] private float scoreTickSeconds = 1f;
+    [SerializeField] private int enemyDestroyGoal = 25;
+    [SerializeField] private float playerStartHealth = 100f;
+    [SerializeField] private int scorePerKill = 100;
+    [SerializeField] private float passiveScoreTickSeconds = 1.25f;
 
     private int score;
     private int highScore;
     private int destroyedTargets;
-    private int livesRemaining;
     private int shotsFired;
     private int successfulHits;
 
+    private float playerHealth;
     private bool isGameOver;
     private bool isVictory;
+
     private float scoreTimer;
     private float statusTimer;
     private string statusMessage = string.Empty;
 
-    private const string HighScoreKey = "TankMissileHighScore";
+    private const string HighScoreKey = "TankShooterHighScore";
 
     public bool IsGameOver => isGameOver;
     public bool IsVictory => isVictory;
@@ -77,7 +79,7 @@ public class GameManager : MonoBehaviour
         }
 
         scoreTimer += Time.deltaTime;
-        if (scoreTimer >= scoreTickSeconds)
+        if (scoreTimer >= passiveScoreTickSeconds)
         {
             scoreTimer = 0f;
             AddScore(1);
@@ -91,14 +93,16 @@ public class GameManager : MonoBehaviour
     {
         isGameOver = false;
         isVictory = false;
+
         score = 0;
         destroyedTargets = 0;
         shotsFired = 0;
         successfulHits = 0;
-        livesRemaining = Mathf.Max(1, baseLives);
+        playerHealth = Mathf.Max(1f, playerStartHealth);
+
         scoreTimer = 0f;
         statusTimer = 0f;
-        statusMessage = "Destroy targets inside the aim zone";
+        statusMessage = "Open-field combat started";
 
         if (player != null)
         {
@@ -115,7 +119,7 @@ public class GameManager : MonoBehaviour
         uiController?.ShowGameOver(false, false);
     }
 
-    public void RegisterShotFired(bool wasLocked)
+    public void RegisterPlayerShot()
     {
         if (isGameOver)
         {
@@ -123,19 +127,21 @@ public class GameManager : MonoBehaviour
         }
 
         shotsFired++;
-        if (wasLocked)
-        {
-            SetStatus("MISSILE LAUNCHED");
-        }
-        else
-        {
-            SetStatus("MISS - no target lock");
-        }
-
-        RefreshUI();
+        SetStatus("CANNON FIRED");
     }
 
-    public void HandleTargetDestroyed()
+    public void RegisterPlayerHit()
+    {
+        if (isGameOver)
+        {
+            return;
+        }
+
+        successfulHits++;
+        AddScore(15);
+    }
+
+    public void HandleEnemyDestroyed(Vector3 _position)
     {
         if (isGameOver)
         {
@@ -143,33 +149,29 @@ public class GameManager : MonoBehaviour
         }
 
         destroyedTargets++;
-        successfulHits++;
-        AddScore(10);
-        SetStatus("TARGET DESTROYED");
+        AddScore(scorePerKill);
+        SetStatus("ENEMY TANK DESTROYED");
 
-        if (destroyedTargets >= targetDestroyGoal)
+        if (destroyedTargets >= enemyDestroyGoal)
         {
             Victory();
         }
     }
 
-    public void HandleTargetEscaped()
+    public void HandlePlayerDamaged(float amount)
     {
         if (isGameOver)
         {
             return;
         }
 
-        livesRemaining--;
-        SetStatus("BASE DAMAGED");
+        playerHealth = Mathf.Max(0f, playerHealth - Mathf.Max(0f, amount));
+        SetStatus("PLAYER HIT");
 
-        if (livesRemaining <= 0)
+        if (playerHealth <= 0f)
         {
             GameOver();
-            return;
         }
-
-        RefreshUI();
     }
 
     public void AddScore(int value)
@@ -197,10 +199,12 @@ public class GameManager : MonoBehaviour
 
         isGameOver = true;
         isVictory = false;
+
         if (targetSpawner != null)
         {
             targetSpawner.enabled = false;
         }
+
         SetStatus("MISSION FAILED");
         uiController?.ShowGameOver(true, false);
     }
@@ -214,10 +218,12 @@ public class GameManager : MonoBehaviour
 
         isGameOver = true;
         isVictory = true;
+
         if (targetSpawner != null)
         {
             targetSpawner.enabled = false;
         }
+
         SetStatus("MISSION COMPLETE");
         uiController?.ShowGameOver(true, true);
     }
@@ -229,9 +235,9 @@ public class GameManager : MonoBehaviour
             Destroy(target.gameObject);
         }
 
-        foreach (MissileProjectile missile in FindObjectsByType<MissileProjectile>(FindObjectsSortMode.None))
+        foreach (MissileProjectile projectile in FindObjectsByType<MissileProjectile>(FindObjectsSortMode.None))
         {
-            Destroy(missile.gameObject);
+            Destroy(projectile.gameObject);
         }
 
         StartGame();
@@ -239,7 +245,7 @@ public class GameManager : MonoBehaviour
 
     private void EnsureRuntimeSetup()
     {
-        EnsureMainCamera();
+        EnsureDisplaySettings();
         EnsureEnvironment();
 
         if (player == null)
@@ -252,6 +258,8 @@ public class GameManager : MonoBehaviour
             player = CreateDefaultPlayer();
         }
 
+        EnsureMainCamera(player);
+
         if (targetSpawner == null)
         {
             targetSpawner = FindAnyObjectByType<ObstacleSpawner>();
@@ -259,7 +267,7 @@ public class GameManager : MonoBehaviour
 
         if (targetSpawner == null)
         {
-            var spawnerGo = new GameObject("TargetSpawner");
+            var spawnerGo = new GameObject("EnemySpawner");
             targetSpawner = spawnerGo.AddComponent<ObstacleSpawner>();
         }
 
@@ -271,19 +279,22 @@ public class GameManager : MonoBehaviour
 
     private void RefreshUI()
     {
-        bool hasLock = player != null && player.HasTargetLock;
-        bool missileReady = player != null && player.IsMissileReady;
+        bool shellReady = player != null && player.IsMissileReady;
+        bool hasTargetLock = player != null && player.HasLockedTarget;
+        int hullHp = Mathf.CeilToInt(playerHealth);
+        int currentWave = targetSpawner != null ? targetSpawner.CurrentWave : 1;
 
         uiController?.UpdateCombat(
             score,
             highScore,
             destroyedTargets,
-            targetDestroyGoal,
-            livesRemaining,
+            enemyDestroyGoal,
+            hullHp,
             shotsFired,
             successfulHits,
-            hasLock,
-            missileReady);
+            shellReady,
+            currentWave,
+            hasTargetLock);
         uiController?.SetTransientMessage(statusMessage);
     }
 
@@ -309,7 +320,7 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private static void EnsureMainCamera()
+    private static void EnsureMainCamera(PlayerCarController followTarget)
     {
         Camera cam = Camera.main;
         if (cam == null)
@@ -320,15 +331,41 @@ public class GameManager : MonoBehaviour
         }
 
         cam.orthographic = false;
-        cam.fieldOfView = 60f;
-        cam.transform.position = new Vector3(0f, 12.5f, -17f);
-        cam.transform.rotation = Quaternion.Euler(34f, 0f, 0f);
-        cam.backgroundColor = new Color(0.2f, 0.27f, 0.35f, 1f);
+        cam.fieldOfView = 64f;
+        cam.transform.position = new Vector3(0f, 5.2f, -7f);
+        cam.transform.rotation = Quaternion.Euler(22f, 0f, 0f);
+        cam.nearClipPlane = 0.1f;
+        cam.farClipPlane = 260f;
+        cam.backgroundColor = new Color(0.5f, 0.67f, 0.8f, 1f);
+
+        TankCameraController followCam = cam.GetComponent<TankCameraController>();
+        if (followCam == null)
+        {
+            followCam = cam.gameObject.AddComponent<TankCameraController>();
+        }
+
+        if (followTarget != null)
+        {
+            followCam.SetTarget(followTarget.transform);
+        }
+    }
+
+    private static void EnsureDisplaySettings()
+    {
+        if (Application.isEditor)
+        {
+            return;
+        }
+
+        int width = Mathf.Max(1600, Screen.currentResolution.width);
+        int height = Mathf.Max(900, Screen.currentResolution.height);
+        Screen.fullScreenMode = FullScreenMode.FullScreenWindow;
+        Screen.SetResolution(width, height, FullScreenMode.FullScreenWindow);
     }
 
     private static PlayerCarController CreateDefaultPlayer()
     {
-        var go = RuntimeCarFactory.CreateTank(new Vector3(0f, 0.55f, -8.5f));
+        var go = RuntimeCarFactory.CreateTank(new Vector3(0f, 0.55f, 0f));
         var controller = go.GetComponent<PlayerCarController>();
         if (controller == null)
         {
@@ -350,15 +387,14 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        bool hasLock = player != null && player.HasTargetLock;
-        bool missileReady = player != null && player.IsMissileReady;
         float hitRate = shotsFired > 0 ? (float)successfulHits / shotsFired * 100f : 0f;
+        int currentWave = targetSpawner != null ? targetSpawner.CurrentWave : 1;
 
-        GUI.Label(new Rect(12, 8, 480, 24), $"Score: {score}   High Score: {highScore}");
-        GUI.Label(new Rect(12, 28, 480, 24), $"Destroyed: {destroyedTargets}/{targetDestroyGoal}   Lives: {livesRemaining}");
-        GUI.Label(new Rect(12, 48, 480, 24), $"Shots: {shotsFired}   Hits: {successfulHits}   Accuracy: {hitRate:0}%");
-        GUI.Label(new Rect(12, 68, 480, 24), $"Lock: {(hasLock ? "ON" : "OFF")}   Missile: {(missileReady ? "READY" : "COOLDOWN")}");
-        GUI.Label(new Rect(12, 88, 560, 24), "Controls: Left/Right or A/D move tank, Space fires missile, R restarts");
+        GUI.Label(new Rect(12, 8, 560, 24), $"Score: {score}   High Score: {highScore}");
+        GUI.Label(new Rect(12, 28, 560, 24), $"Kills: {destroyedTargets}/{enemyDestroyGoal}   Wave: {currentWave}");
+        GUI.Label(new Rect(12, 48, 560, 24), $"Hull: {Mathf.CeilToInt(playerHealth)}   Cannon: {(player != null && player.IsMissileReady ? "READY" : "RELOADING")}");
+        GUI.Label(new Rect(12, 68, 560, 24), $"Shots: {shotsFired}   Hits: {successfulHits}   Accuracy: {hitRate:0}%");
+        GUI.Label(new Rect(12, 88, 760, 24), "Controls: Up/Down move, Left/Right steer, Q/E turret turn, Space fire, R restart");
 
         if (!string.IsNullOrEmpty(statusMessage))
         {

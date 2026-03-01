@@ -19,11 +19,12 @@ public class UIController : MonoBehaviour
         int highScore,
         int destroyed,
         int targetGoal,
-        int lives,
+        int hullHp,
         int shots,
         int hits,
-        bool hasLock,
-        bool missileReady)
+        bool shellReady,
+        int wave,
+        bool hasTargetLock)
     {
         if (scoreText != null)
         {
@@ -37,22 +38,22 @@ public class UIController : MonoBehaviour
 
         if (objectiveText != null)
         {
-            objectiveText.text = $"Targets: {destroyed}/{targetGoal}";
+            objectiveText.text = $"Kills: {destroyed}/{targetGoal}";
         }
 
         if (livesText != null)
         {
-            livesText.text = $"Lives: {lives}";
+            livesText.text = $"Hull: {hullHp}";
         }
 
         if (fireText != null)
         {
-            fireText.text = $"Missile: {(missileReady ? "READY" : "COOLDOWN")}";
+            fireText.text = $"Cannon: {(shellReady ? "READY" : "RELOADING")}";
         }
 
         if (lockText != null)
         {
-            lockText.text = $"Lock: {(hasLock ? "ON" : "OFF")}";
+            lockText.text = $"Wave: {wave}  Lock: {(hasTargetLock ? "ON" : "OFF")}";
         }
 
         if (accuracyText != null)
