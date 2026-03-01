@@ -2,26 +2,24 @@ using UnityEngine;
 
 public class ObstacleSpawner : MonoBehaviour
 {
-    [Header("Prefabs")]
-    [SerializeField] private GameObject obstaclePrefab;
-    [SerializeField] private GameObject shieldPrefab;
+    [Header("Target Prefab")]
+    [SerializeField] private GameObject targetPrefab;
 
     [Header("Spawn Area")]
-    [SerializeField] private float minX = -4f;
-    [SerializeField] private float maxX = 4f;
+    [SerializeField] private float minX = -5.2f;
+    [SerializeField] private float maxX = 5.2f;
+    [SerializeField] private float spawnY = 0.7f;
     [SerializeField] private float spawnZ = 24f;
 
-    [Header("Timing")]
-    [SerializeField] private float obstacleSpawnInterval = 1.3f;
-    [SerializeField] private float shieldSpawnInterval = 6f;
+    [Header("Spawn Timing")]
+    [SerializeField] private float spawnInterval = 1.25f;
 
-    [Header("Obstacle Speed")]
-    [SerializeField] private float initialObstacleSpeed = 12f;
-    [SerializeField] private float speedIncrease = 0.3f;
+    [Header("Target Movement")]
+    [SerializeField] private float initialTargetSpeed = 5.8f;
+    [SerializeField] private float speedIncreasePerSpawn = 0.08f;
 
-    private float obstacleTimer;
-    private float shieldTimer;
-    private float currentObstacleSpeed;
+    private float spawnTimer;
+    private float currentTargetSpeed;
 
     private void Start()
     {
@@ -35,88 +33,77 @@ public class ObstacleSpawner : MonoBehaviour
             return;
         }
 
-        obstacleTimer += Time.deltaTime;
-        shieldTimer += Time.deltaTime;
+        spawnTimer += Time.deltaTime;
 
-        if (obstacleTimer >= obstacleSpawnInterval)
+        if (spawnTimer >= spawnInterval)
         {
-            obstacleTimer = 0f;
-            SpawnObstacle();
-            currentObstacleSpeed += speedIncrease;
-        }
-
-        if (shieldTimer >= shieldSpawnInterval)
-        {
-            shieldTimer = 0f;
-            SpawnShield();
+            spawnTimer = 0f;
+            SpawnTarget();
         }
     }
 
     public void ResetSpawner()
     {
-        obstacleTimer = 0f;
-        shieldTimer = 0f;
-        currentObstacleSpeed = initialObstacleSpeed;
+        spawnTimer = 0f;
+        currentTargetSpeed = initialTargetSpeed;
     }
 
-    private void SpawnObstacle()
+    private void SpawnTarget()
     {
-        Vector3 spawnPos = new Vector3(Random.Range(minX, maxX), 0.55f, spawnZ);
-        GameObject obstacle = obstaclePrefab != null
-            ? Instantiate(obstaclePrefab, spawnPos, Quaternion.identity)
-            : CreateRuntimeObstacle(spawnPos);
-        if (obstacle.TryGetComponent(out ObstacleMover mover))
-        {
-            mover.SetSpeed(currentObstacleSpeed);
-        }
-    }
+        Vector3 spawnPosition = new Vector3(Random.Range(minX, maxX), spawnY, spawnZ);
+        GameObject target = targetPrefab != null
+            ? Instantiate(targetPrefab, spawnPosition, Quaternion.identity)
+            : CreateRuntimeTarget(spawnPosition);
 
-    private void SpawnShield()
-    {
-        Vector3 spawnPos = new Vector3(Random.Range(minX, maxX), 0.75f, spawnZ + 2f);
-        if (shieldPrefab != null)
+        if (target.TryGetComponent(out ObstacleMover mover))
         {
-            Instantiate(shieldPrefab, spawnPos, Quaternion.identity);
-            return;
+            mover.SetSpeed(currentTargetSpeed);
         }
 
-        CreateRuntimeShield(spawnPos);
+        currentTargetSpeed += speedIncreasePerSpawn;
     }
 
-    private static GameObject CreateRuntimeObstacle(Vector3 spawnPos)
+    private static GameObject CreateRuntimeTarget(Vector3 spawnPosition)
     {
-        var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        go.name = "Obstacle";
-        go.transform.position = spawnPos;
-        go.transform.localScale = new Vector3(1f, 1f, 2f);
-        go.GetComponent<Renderer>().material = RuntimeMaterialFactory.Create(new Color(1f, 0.35f, 0.25f, 1f));
+        var root = new GameObject("Target");
+        root.transform.position = spawnPosition;
 
-        var collider = go.GetComponent<BoxCollider>();
+        var collider = root.AddComponent<BoxCollider>();
         collider.isTrigger = true;
+        collider.center = new Vector3(0f, 0.45f, 0f);
+        collider.size = new Vector3(1.4f, 0.9f, 1.6f);
 
-        var rb = go.AddComponent<Rigidbody>();
+        var rb = root.AddComponent<Rigidbody>();
         rb.useGravity = false;
         rb.isKinematic = true;
 
-        go.AddComponent<ObstacleMover>();
-        return go;
+        Material bodyMat = RuntimeMaterialFactory.Create(new Color(0.82f, 0.18f, 0.2f, 1f));
+        Material detailMat = RuntimeMaterialFactory.Create(new Color(0.24f, 0.16f, 0.12f, 1f));
+        Material markerMat = RuntimeMaterialFactory.Create(new Color(1f, 0.92f, 0.26f, 1f));
+
+        CreatePart(root.transform, PrimitiveType.Cube, new Vector3(0f, 0.35f, 0f), new Vector3(1.2f, 0.5f, 1.4f), bodyMat);
+        CreatePart(root.transform, PrimitiveType.Cylinder, new Vector3(0f, 0.72f, 0.05f), new Vector3(0.35f, 0.13f, 0.35f), detailMat);
+        CreatePart(root.transform, PrimitiveType.Cube, new Vector3(0f, 0.74f, 0.7f), new Vector3(0.16f, 0.12f, 0.85f), detailMat);
+        CreatePart(root.transform, PrimitiveType.Sphere, new Vector3(0f, 1.08f, 0f), new Vector3(0.22f, 0.22f, 0.22f), markerMat);
+
+        root.AddComponent<ObstacleMover>();
+        return root;
     }
 
-    private static void CreateRuntimeShield(Vector3 spawnPos)
+    private static GameObject CreatePart(Transform parent, PrimitiveType primitiveType, Vector3 localPosition, Vector3 localScale, Material material)
     {
-        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        go.name = "ShieldPickup";
-        go.transform.position = spawnPos;
-        go.transform.localScale = new Vector3(0.7f, 0.7f, 0.7f);
-        go.GetComponent<Renderer>().material = RuntimeMaterialFactory.Create(new Color(1f, 0.95f, 0.2f, 1f));
+        var part = GameObject.CreatePrimitive(primitiveType);
+        part.transform.SetParent(parent, false);
+        part.transform.localPosition = localPosition;
+        part.transform.localScale = localScale;
+        part.GetComponent<Renderer>().material = material;
 
-        var collider = go.GetComponent<SphereCollider>();
-        collider.isTrigger = true;
+        Collider col = part.GetComponent<Collider>();
+        if (col != null)
+        {
+            Destroy(col);
+        }
 
-        var rb = go.AddComponent<Rigidbody>();
-        rb.useGravity = false;
-        rb.isKinematic = true;
-
-        go.AddComponent<ShieldPickup>();
+        return part;
     }
 }

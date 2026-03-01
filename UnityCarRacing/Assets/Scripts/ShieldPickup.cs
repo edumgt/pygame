@@ -2,27 +2,16 @@ using UnityEngine;
 
 public class ShieldPickup : MonoBehaviour
 {
-    [SerializeField] private float moveSpeed = 8f;
-    [SerializeField] private float despawnZ = -12f;
+    [SerializeField] private float spinSpeed = 160f;
+    [SerializeField] private float lifeSeconds = 2f;
 
     private void Update()
     {
-        transform.Translate(Vector3.back * moveSpeed * Time.deltaTime, Space.World);
-
-        if (transform.position.z < despawnZ)
+        transform.Rotate(Vector3.up, spinSpeed * Time.deltaTime, Space.World);
+        lifeSeconds -= Time.deltaTime;
+        if (lifeSeconds <= 0f)
         {
             Destroy(gameObject);
         }
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        if (!other.TryGetComponent<PlayerCarController>(out _))
-        {
-            return;
-        }
-
-        GameManager.Instance?.AcquireShield();
-        Destroy(gameObject);
     }
 }

@@ -2,27 +2,16 @@ using UnityEngine;
 
 public class ShieldPickup : MonoBehaviour
 {
-    [SerializeField] private float fallSpeed = 2.5f;
-    [SerializeField] private float despawnY = -7f;
+    [SerializeField] private float spinSpeed = 160f;
+    [SerializeField] private float lifeSeconds = 2f;
 
     private void Update()
     {
-        transform.Translate(Vector3.down * fallSpeed * Time.deltaTime);
-
-        if (transform.position.y < despawnY)
+        transform.Rotate(Vector3.up, spinSpeed * Time.deltaTime, Space.World);
+        lifeSeconds -= Time.deltaTime;
+        if (lifeSeconds <= 0f)
         {
             Destroy(gameObject);
         }
-    }
-
-    private void OnTriggerEnter2D(Collider2D other)
-    {
-        if (!other.CompareTag("Player"))
-        {
-            return;
-        }
-
-        GameManager.Instance?.AcquireShield();
-        Destroy(gameObject);
     }
 }
