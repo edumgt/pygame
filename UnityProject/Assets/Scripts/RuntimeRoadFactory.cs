@@ -42,12 +42,12 @@ public static class RuntimeRoadFactory
         surfaceZones.Clear();
         var root = new GameObject("RuntimeBattlefield");
 
-        Material grassMat = RuntimeMaterialFactory.Create(new Color(0.26f, 0.42f, 0.24f, 1f));
-        Material dirtMat = RuntimeMaterialFactory.Create(new Color(0.45f, 0.39f, 0.28f, 1f));
-        Material rockMat = RuntimeMaterialFactory.Create(new Color(0.38f, 0.39f, 0.37f, 1f));
-        Material trunkMat = RuntimeMaterialFactory.Create(new Color(0.36f, 0.23f, 0.15f, 1f));
-        Material leafMat = RuntimeMaterialFactory.Create(new Color(0.2f, 0.36f, 0.18f, 1f));
-        Material boundaryMat = RuntimeMaterialFactory.Create(new Color(0.5f, 0.44f, 0.34f, 1f));
+        Material grassMat = RuntimeMaterialFactory.Create(new Color(0.26f, 0.42f, 0.24f, 1f), RuntimeMaterialFactory.MaterialPreset.Grass);
+        Material dirtMat = RuntimeMaterialFactory.Create(new Color(0.45f, 0.39f, 0.28f, 1f), RuntimeMaterialFactory.MaterialPreset.Dirt);
+        Material rockMat = RuntimeMaterialFactory.Create(new Color(0.38f, 0.39f, 0.37f, 1f), RuntimeMaterialFactory.MaterialPreset.Rock);
+        Material trunkMat = RuntimeMaterialFactory.Create(new Color(0.36f, 0.23f, 0.15f, 1f), RuntimeMaterialFactory.MaterialPreset.Bark);
+        Material leafMat = RuntimeMaterialFactory.Create(new Color(0.2f, 0.36f, 0.18f, 1f), RuntimeMaterialFactory.MaterialPreset.Leaf);
+        Material boundaryMat = RuntimeMaterialFactory.Create(new Color(0.5f, 0.44f, 0.34f, 1f), RuntimeMaterialFactory.MaterialPreset.Boundary);
 
         CreateFieldGround(root.transform, grassMat, dirtMat);
         CreateFieldBoundary(root.transform, boundaryMat);
@@ -99,7 +99,7 @@ public static class RuntimeRoadFactory
 
     private static void CreateFieldCover(Transform parent, Material rockMat, Material trunkMat, Material leafMat, Material dirtMat)
     {
-        for (int i = 0; i < 14; i++)
+        for (int i = 0; i < 30; i++)
         {
             float x = Random.Range(-FieldHalfSize + 5f, FieldHalfSize - 5f);
             float z = Random.Range(-FieldHalfSize + 5f, FieldHalfSize - 5f);
@@ -109,13 +109,18 @@ public static class RuntimeRoadFactory
                 continue;
             }
 
-            if (Random.value > 0.4f)
+            float roll = Random.value;
+            if (roll > 0.35f)
             {
                 CreateRockCluster(parent, new Vector3(x, 0f, z), rockMat, dirtMat);
             }
-            else
+            else if (roll > 0.1f)
             {
                 CreateTree(parent, new Vector3(x, 0f, z), trunkMat, leafMat);
+            }
+            else
+            {
+                CreateBush(parent, new Vector3(x, 0f, z), leafMat, dirtMat);
             }
         }
     }
@@ -153,21 +158,85 @@ public static class RuntimeRoadFactory
 
     private static void CreateRockCluster(Transform parent, Vector3 center, Material rockMat, Material dirtMat)
     {
-        float baseSize = Random.Range(0.8f, 1.6f);
-        CreateBox(parent, "RockBase", center + new Vector3(0f, 0.07f, 0f), new Vector3(baseSize * 1.5f, 0.14f, baseSize * 1.4f), dirtMat);
+        float baseSize = Random.Range(1.1f, 2f);
+        CreateBox(parent, "RockBase", center + new Vector3(0f, 0.06f, 0f), new Vector3(baseSize * 1.75f, 0.12f, baseSize * 1.5f), dirtMat);
+        AddSurfaceZone(center + new Vector3(0f, 0.02f, 0f), new Vector3(baseSize * 1.75f, 0.1f, baseSize * 1.5f), 0.62f, 0.78f, 0.74f);
 
-        for (int i = 0; i < 3; i++)
+        int rockCount = Random.Range(4, 7);
+        for (int i = 0; i < rockCount; i++)
         {
-            Vector3 offset = new Vector3(Random.Range(-0.7f, 0.7f), 0.25f + i * 0.08f, Random.Range(-0.7f, 0.7f));
-            Vector3 scale = new Vector3(Random.Range(0.55f, 1.2f), Random.Range(0.35f, 0.75f), Random.Range(0.55f, 1.2f));
-            CreateBox(parent, "Rock", center + offset, scale, rockMat);
+            Vector3 offset = new Vector3(Random.Range(-0.95f, 0.95f), Random.Range(0.18f, 0.55f), Random.Range(-0.95f, 0.95f));
+            Vector3 scale = new Vector3(Random.Range(0.45f, 1.25f), Random.Range(0.28f, 0.82f), Random.Range(0.45f, 1.25f));
+            PrimitiveType type = Random.value > 0.65f ? PrimitiveType.Capsule : PrimitiveType.Cube;
+            GameObject rock = CreatePart(parent, "Rock", type, center + offset, scale, rockMat);
+            rock.transform.rotation = Quaternion.Euler(Random.Range(-8f, 8f), Random.Range(0f, 360f), Random.Range(-8f, 8f));
+        }
+
+        int pebbleCount = Random.Range(5, 10);
+        for (int i = 0; i < pebbleCount; i++)
+        {
+            Vector3 offset = new Vector3(Random.Range(-1.35f, 1.35f), 0.11f, Random.Range(-1.35f, 1.35f));
+            Vector3 scale = Vector3.one * Random.Range(0.1f, 0.24f);
+            CreatePart(parent, "Pebble", PrimitiveType.Sphere, center + offset, scale, rockMat);
         }
     }
 
     private static void CreateTree(Transform parent, Vector3 center, Material trunkMat, Material leafMat)
     {
-        CreateBox(parent, "TreeTrunk", center + new Vector3(0f, 0.7f, 0f), new Vector3(0.35f, 1.4f, 0.35f), trunkMat);
-        CreateBox(parent, "TreeLeaves", center + new Vector3(0f, 1.7f, 0f), new Vector3(1.8f, 1.8f, 1.8f), leafMat);
+        float trunkHeight = Random.Range(1.5f, 2.3f);
+        float trunkWidth = Random.Range(0.28f, 0.42f);
+        GameObject trunk = CreatePart(
+            parent,
+            "TreeTrunk",
+            PrimitiveType.Cylinder,
+            center + new Vector3(0f, trunkHeight * 0.5f, 0f),
+            new Vector3(trunkWidth, trunkHeight * 0.5f, trunkWidth),
+            trunkMat);
+        trunk.transform.rotation = Quaternion.Euler(Random.Range(-2f, 2f), Random.Range(0f, 360f), Random.Range(-2f, 2f));
+
+        float branchY = trunkHeight * 0.7f;
+        for (int i = 0; i < 3; i++)
+        {
+            float yaw = 120f * i + Random.Range(-20f, 20f);
+            Vector3 dir = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+            Vector3 branchPos = center + new Vector3(0f, branchY + Random.Range(-0.16f, 0.16f), 0f) + dir * Random.Range(0.28f, 0.42f);
+            GameObject branch = CreatePart(
+                parent,
+                "TreeBranch",
+                PrimitiveType.Cylinder,
+                branchPos,
+                new Vector3(trunkWidth * 0.45f, Random.Range(0.22f, 0.32f), trunkWidth * 0.45f),
+                trunkMat);
+            branch.transform.rotation = Quaternion.Euler(Random.Range(-20f, -8f), yaw, Random.Range(-18f, 18f));
+        }
+
+        float canopyBaseY = trunkHeight + 0.42f;
+        for (int i = 0; i < 3; i++)
+        {
+            float size = Random.Range(1.2f, 1.9f) * (1f - i * 0.14f);
+            Vector3 offset = new Vector3(Random.Range(-0.22f, 0.22f), i * 0.44f, Random.Range(-0.22f, 0.22f));
+            CreatePart(
+                parent,
+                "TreeLeaves",
+                PrimitiveType.Sphere,
+                center + new Vector3(0f, canopyBaseY, 0f) + offset,
+                new Vector3(size, size * Random.Range(0.85f, 1.08f), size),
+                leafMat);
+        }
+    }
+
+    private static void CreateBush(Transform parent, Vector3 center, Material leafMat, Material dirtMat)
+    {
+        float radius = Random.Range(0.95f, 1.5f);
+        CreatePart(parent, "BushBase", PrimitiveType.Cylinder, center + new Vector3(0f, 0.06f, 0f), new Vector3(radius * 0.55f, 0.06f, radius * 0.55f), dirtMat);
+
+        int chunks = Random.Range(4, 7);
+        for (int i = 0; i < chunks; i++)
+        {
+            Vector3 offset = new Vector3(Random.Range(-0.48f, 0.48f), Random.Range(0.28f, 0.58f), Random.Range(-0.48f, 0.48f));
+            float size = Random.Range(0.6f, 1f);
+            CreatePart(parent, "BushLeaf", PrimitiveType.Sphere, center + offset, new Vector3(size, size * 0.78f, size), leafMat);
+        }
     }
 
     private static void EnsureDirectionalLight(Transform parent)
@@ -197,7 +266,12 @@ public static class RuntimeRoadFactory
 
     private static GameObject CreateBox(Transform parent, string name, Vector3 position, Vector3 scale, Material material)
     {
-        var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        return CreatePart(parent, name, PrimitiveType.Cube, position, scale, material);
+    }
+
+    private static GameObject CreatePart(Transform parent, string name, PrimitiveType primitiveType, Vector3 position, Vector3 scale, Material material)
+    {
+        var go = GameObject.CreatePrimitive(primitiveType);
         go.name = name;
         go.transform.SetParent(parent, false);
         go.transform.localPosition = position;

@@ -187,6 +187,7 @@ public class ObstacleMover : MonoBehaviour
         }
 
         MissileProjectile.CreateEnemyShell(from, shellDirection, shellSpeed, shellDamage, transform);
+        RuntimeAudioFactory.PlayOneShotAt(from, RuntimeAudioFactory.GetEnemyShotClip(), 0.62f, 1f, 0.94f, 1.05f);
         fireTimer = fireInterval + Random.Range(-0.2f, 0.35f);
     }
 
@@ -198,6 +199,7 @@ public class ObstacleMover : MonoBehaviour
         }
 
         isAlive = false;
+        RuntimeAudioFactory.PlayOneShotAt(transform.position + Vector3.up * 0.3f, RuntimeAudioFactory.GetExplosionClip(), 0.85f, 1f, 0.95f, 1.03f);
         SpawnImpact(new Color(1f, 0.72f, 0.2f, 1f), 0.85f);
         GameManager.Instance?.HandleEnemyDestroyed(transform.position);
         Destroy(gameObject);

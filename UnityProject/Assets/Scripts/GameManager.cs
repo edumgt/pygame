@@ -170,6 +170,11 @@ public class GameManager : MonoBehaviour
 
         if (playerHealth <= 0f)
         {
+            if (player != null)
+            {
+                player.HandleDestroyed();
+                RuntimeAudioFactory.PlayOneShotAt(player.transform.position + Vector3.up * 0.4f, RuntimeAudioFactory.GetExplosionClip(), 1f, 1f, 0.94f, 1.02f);
+            }
             GameOver();
         }
     }
@@ -247,6 +252,7 @@ public class GameManager : MonoBehaviour
     {
         EnsureDisplaySettings();
         EnsureEnvironment();
+        RuntimeAudioFactory.EnsureBattleAmbience();
 
         if (player == null)
         {
@@ -275,13 +281,18 @@ public class GameManager : MonoBehaviour
         {
             uiController = FindAnyObjectByType<UIController>();
         }
+
+        if (uiController == null)
+        {
+            var hudGo = new GameObject("CombatHUD");
+            uiController = hudGo.AddComponent<UIController>();
+        }
     }
 
     private void RefreshUI()
     {
         bool shellReady = player != null && player.IsMissileReady;
         bool hasTargetLock = player != null && player.HasLockedTarget;
-        int hullHp = Mathf.CeilToInt(playerHealth);
         int currentWave = targetSpawner != null ? targetSpawner.CurrentWave : 1;
 
         uiController?.UpdateCombat(
@@ -289,7 +300,8 @@ public class GameManager : MonoBehaviour
             highScore,
             destroyedTargets,
             enemyDestroyGoal,
-            hullHp,
+            playerHealth,
+            playerStartHealth,
             shotsFired,
             successfulHits,
             shellReady,
@@ -392,7 +404,7 @@ public class GameManager : MonoBehaviour
 
         GUI.Label(new Rect(12, 8, 560, 24), $"Score: {score}   High Score: {highScore}");
         GUI.Label(new Rect(12, 28, 560, 24), $"Kills: {destroyedTargets}/{enemyDestroyGoal}   Wave: {currentWave}");
-        GUI.Label(new Rect(12, 48, 560, 24), $"Hull: {Mathf.CeilToInt(playerHealth)}   Cannon: {(player != null && player.IsMissileReady ? "READY" : "RELOADING")}");
+        GUI.Label(new Rect(12, 48, 560, 24), $"Hull: {Mathf.CeilToInt(playerHealth)}/{Mathf.CeilToInt(playerStartHealth)}   Cannon: {(player != null && player.IsMissileReady ? "READY" : "RELOADING")}");
         GUI.Label(new Rect(12, 68, 560, 24), $"Shots: {shotsFired}   Hits: {successfulHits}   Accuracy: {hitRate:0}%");
         GUI.Label(new Rect(12, 88, 760, 24), "Controls: Up/Down move, Left/Right steer, Q/E turret turn, Space fire, R restart");
 

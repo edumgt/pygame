@@ -18,6 +18,10 @@ public class TankVFXController : MonoBehaviour
     [SerializeField] private int maxPointsPerTrail = 220;
     [SerializeField] private float markWidth = 0.23f;
 
+    [Header("Destruction FX")]
+    [SerializeField] private float blastHeightOffset = 0.75f;
+    [SerializeField] private float smokeDuration = 2.8f;
+
     private ParticleSystem leftDust;
     private ParticleSystem rightDust;
     private Transform leftAnchor;
@@ -35,9 +39,13 @@ public class TankVFXController : MonoBehaviour
     private Quaternion previousRotation;
     private bool hasPreviousFrame;
     private float smoothedSlip;
+    private bool destructionTriggered;
+    private ParticleSystem destructionSmoke;
 
     public void ResetEffects()
     {
+        destructionTriggered = false;
+
         if (leftDust != null)
         {
             leftDust.Clear();
@@ -56,6 +64,12 @@ public class TankVFXController : MonoBehaviour
         hasPreviousFrame = false;
         velocity = Vector3.zero;
         smoothedSlip = 0f;
+
+        if (destructionSmoke != null)
+        {
+            Destroy(destructionSmoke.gameObject);
+            destructionSmoke = null;
+        }
     }
 
     private void Awake()
@@ -65,6 +79,13 @@ public class TankVFXController : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (destructionTriggered)
+        {
+            SetDustRate(leftDust, 0f);
+            SetDustRate(rightDust, 0f);
+            return;
+        }
+
         if (GameManager.Instance != null && GameManager.Instance.IsGameOver)
         {
             SetDustRate(leftDust, 0f);
@@ -129,6 +150,148 @@ public class TankVFXController : MonoBehaviour
         previousPosition = currentPosition;
         previousRotation = currentRotation;
         hasPreviousFrame = true;
+    }
+
+    public void PlayDestructionEffect()
+    {
+        if (destructionTriggered)
+        {
+            return;
+        }
+
+        destructionTriggered = true;
+        SetDustRate(leftDust, 0f);
+        SetDustRate(rightDust, 0f);
+
+        if (leftDust != null)
+        {
+            leftDust.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        }
+
+        if (rightDust != null)
+        {
+            rightDust.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        }
+
+        ResetTrail(ref leftTrail, ref hasLastLeftMark);
+        ResetTrail(ref rightTrail, ref hasLastRightMark);
+
+        Vector3 center = transform.position + Vector3.up * blastHeightOffset;
+        SpawnBlastBurst(center, 0.34f, 2.25f, 0.22f, new Color(1f, 0.78f, 0.28f, 0.95f));
+        SpawnBlastBurst(center + transform.forward * 0.46f + Vector3.up * 0.06f, 0.28f, 1.72f, 0.2f, new Color(1f, 0.48f, 0.22f, 0.88f));
+        SpawnBlastBurst(center - transform.forward * 0.33f + transform.right * 0.28f, 0.22f, 1.46f, 0.18f, new Color(0.88f, 0.26f, 0.18f, 0.82f));
+        SpawnGroundScorch(center);
+        SpawnDestructionSmoke(center);
+    }
+
+    private void SpawnBlastBurst(Vector3 position, float startScale, float endScale, float duration, Color color)
+    {
+        var blast = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        blast.name = "PlayerDestructionBlast";
+        blast.transform.position = position;
+        blast.transform.localScale = Vector3.one * startScale;
+
+        Renderer renderer = blast.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            renderer.material = RuntimeMaterialFactory.Create(color, RuntimeMaterialFactory.MaterialPreset.Metal);
+        }
+
+        Collider col = blast.GetComponent<Collider>();
+        if (col != null)
+        {
+            Destroy(col);
+        }
+
+        var transient = blast.AddComponent<TransientBlastVisual>();
+        transient.Initialize(renderer, color, duration, Vector3.one * startScale, Vector3.one * endScale);
+    }
+
+    private void SpawnGroundScorch(Vector3 center)
+    {
+        var scorch = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        scorch.name = "PlayerScorchMark";
+        scorch.transform.position = new Vector3(center.x, transform.position.y + 0.02f, center.z);
+        scorch.transform.localScale = new Vector3(0.55f, 0.01f, 0.55f);
+
+        Renderer renderer = scorch.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            renderer.material = RuntimeMaterialFactory.Create(new Color(0.09f, 0.08f, 0.07f, 0.58f), RuntimeMaterialFactory.MaterialPreset.Boundary);
+        }
+
+        Collider col = scorch.GetComponent<Collider>();
+        if (col != null)
+        {
+            Destroy(col);
+        }
+
+        Destroy(scorch, 4f);
+    }
+
+    private void SpawnDestructionSmoke(Vector3 center)
+    {
+        if (destructionSmoke != null)
+        {
+            Destroy(destructionSmoke.gameObject);
+            destructionSmoke = null;
+        }
+
+        var go = new GameObject("PlayerDestructionSmoke");
+        go.transform.position = center + Vector3.up * 0.08f;
+
+        destructionSmoke = go.AddComponent<ParticleSystem>();
+        var main = destructionSmoke.main;
+        main.loop = false;
+        main.playOnAwake = false;
+        main.duration = 1.4f;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.8f, 1.9f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.6f, 1.8f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.45f, 1.1f);
+        main.startColor = new Color(0.35f, 0.33f, 0.31f, 0.65f);
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.maxParticles = 120;
+
+        var emission = destructionSmoke.emission;
+        emission.enabled = true;
+        emission.rateOverTime = 0f;
+        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 50), new ParticleSystem.Burst(0.12f, 32) });
+
+        var shape = destructionSmoke.shape;
+        shape.enabled = true;
+        shape.shapeType = ParticleSystemShapeType.Sphere;
+        shape.radius = 0.28f;
+
+        var vel = destructionSmoke.velocityOverLifetime;
+        vel.enabled = true;
+        vel.space = ParticleSystemSimulationSpace.World;
+        vel.y = new ParticleSystem.MinMaxCurve(1.2f);
+
+        var col = destructionSmoke.colorOverLifetime;
+        col.enabled = true;
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new[]
+            {
+                new GradientColorKey(new Color(0.54f, 0.42f, 0.31f), 0f),
+                new GradientColorKey(new Color(0.29f, 0.29f, 0.29f), 0.4f),
+                new GradientColorKey(new Color(0.12f, 0.12f, 0.12f), 1f)
+            },
+            new[]
+            {
+                new GradientAlphaKey(0.6f, 0f),
+                new GradientAlphaKey(0.3f, 0.55f),
+                new GradientAlphaKey(0f, 1f)
+            });
+        col.color = gradient;
+
+        var renderer = destructionSmoke.GetComponent<ParticleSystemRenderer>();
+        renderer.material = CreateDustMaterial();
+        renderer.renderMode = ParticleSystemRenderMode.Billboard;
+        renderer.sortMode = ParticleSystemSortMode.Distance;
+
+        destructionSmoke.Play();
+        Destroy(go, smokeDuration);
     }
 
     private bool EnsureRig()
@@ -375,5 +538,62 @@ public class TankVFXController : MonoBehaviour
         }
 
         return mat;
+    }
+
+    private sealed class TransientBlastVisual : MonoBehaviour
+    {
+        private Renderer targetRenderer;
+        private Color startColor;
+        private float duration;
+        private Vector3 fromScale;
+        private Vector3 toScale;
+        private float timer;
+
+        public void Initialize(Renderer renderer, Color color, float lifeDuration, Vector3 startScale, Vector3 endScale)
+        {
+            targetRenderer = renderer;
+            startColor = color;
+            duration = Mathf.Max(0.05f, lifeDuration);
+            fromScale = startScale;
+            toScale = endScale;
+            timer = 0f;
+            transform.localScale = fromScale;
+            ApplyColor(startColor);
+        }
+
+        private void Update()
+        {
+            timer += Time.deltaTime;
+            float t = Mathf.Clamp01(timer / duration);
+            transform.localScale = Vector3.Lerp(fromScale, toScale, t);
+
+            Color c = startColor;
+            c.a = Mathf.Lerp(startColor.a, 0f, t);
+            ApplyColor(c);
+
+            if (t >= 1f)
+            {
+                Destroy(gameObject);
+            }
+        }
+
+        private void ApplyColor(Color color)
+        {
+            if (targetRenderer == null)
+            {
+                return;
+            }
+
+            Material mat = targetRenderer.material;
+            if (mat.HasProperty("_BaseColor"))
+            {
+                mat.SetColor("_BaseColor", color);
+            }
+
+            if (mat.HasProperty("_Color"))
+            {
+                mat.SetColor("_Color", color);
+            }
+        }
     }
 }

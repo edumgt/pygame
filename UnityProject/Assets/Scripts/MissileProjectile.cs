@@ -153,6 +153,8 @@ public class MissileProjectile : MonoBehaviour
             Destroy(col);
         }
 
+        float volume = ownerType == OwnerType.Player ? 0.66f : 0.58f;
+        RuntimeAudioFactory.PlayOneShotAt(position, RuntimeAudioFactory.GetImpactClip(), volume, 1f, 0.95f, 1.06f);
         Destroy(blast, 0.14f);
     }
 }

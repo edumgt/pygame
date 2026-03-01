@@ -168,10 +168,10 @@ public class ObstacleSpawner : MonoBehaviour
         rb.isKinematic = true;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
 
-        Material hullMat = RuntimeMaterialFactory.Create(new Color(0.65f, 0.18f, 0.2f, 1f));
-        Material turretMat = RuntimeMaterialFactory.Create(new Color(0.46f, 0.14f, 0.17f, 1f));
-        Material trackMat = RuntimeMaterialFactory.Create(new Color(0.13f, 0.13f, 0.14f, 1f));
-        Material detailMat = RuntimeMaterialFactory.Create(new Color(0.86f, 0.75f, 0.28f, 1f));
+        Material hullMat = RuntimeMaterialFactory.Create(new Color(0.65f, 0.18f, 0.2f, 1f), RuntimeMaterialFactory.MaterialPreset.Metal);
+        Material turretMat = RuntimeMaterialFactory.Create(new Color(0.46f, 0.14f, 0.17f, 1f), RuntimeMaterialFactory.MaterialPreset.Metal);
+        Material trackMat = RuntimeMaterialFactory.Create(new Color(0.13f, 0.13f, 0.14f, 1f), RuntimeMaterialFactory.MaterialPreset.Boundary);
+        Material detailMat = RuntimeMaterialFactory.Create(new Color(0.86f, 0.75f, 0.28f, 1f), RuntimeMaterialFactory.MaterialPreset.Metal);
 
         CreatePart(root.transform, PrimitiveType.Cube, new Vector3(0f, 0.4f, 0f), new Vector3(1.45f, 0.55f, 2f), hullMat);
         CreatePart(root.transform, PrimitiveType.Cube, new Vector3(-0.88f, 0.26f, 0f), new Vector3(0.28f, 0.24f, 2.1f), trackMat);

@@ -21,6 +21,7 @@ public class PlayerCarController : MonoBehaviour
     [SerializeField] private Transform turretPivot;
     [SerializeField] private Transform muzzlePoint;
     [SerializeField] private TankVFXController tankVfx;
+    [SerializeField] private TankAudioController tankAudio;
     [SerializeField] private float turretTurnSpeed = 135f;
     [SerializeField] private float autoTrackSpeed = 170f;
     [SerializeField] private float autoTrackRange = 26f;
@@ -37,11 +38,15 @@ public class PlayerCarController : MonoBehaviour
     private float leftTrackSpeed;
     private float rightTrackSpeed;
     private Vector3 hullVelocity;
+    private float currentTurnMagnitude;
     private float targetRefreshTimer;
     private ObstacleMover cachedTarget;
+    private bool isDestroyed;
 
     public bool IsMissileReady => fireTimer <= 0f;
     public bool HasLockedTarget => cachedTarget != null && cachedTarget.IsAlive;
+    public float CurrentHullSpeedAbs => hullVelocity.magnitude;
+    public float CurrentTurnMagnitude => currentTurnMagnitude;
 
     private void Awake()
     {
@@ -53,7 +58,7 @@ public class PlayerCarController : MonoBehaviour
 
     private void Update()
     {
-        if (GameManager.Instance != null && GameManager.Instance.IsGameOver)
+        if (isDestroyed || (GameManager.Instance != null && GameManager.Instance.IsGameOver))
         {
             return;
         }
@@ -107,6 +112,7 @@ public class PlayerCarController : MonoBehaviour
 
         float forwardSpeed = (leftTrackSpeed + rightTrackSpeed) * 0.5f;
         float angularSpeedDeg = ((rightTrackSpeed - leftTrackSpeed) / Mathf.Max(0.1f, hullTrackWidth)) * Mathf.Rad2Deg * surface.TurnFactor;
+        currentTurnMagnitude = Mathf.Clamp01(Mathf.Abs(angularSpeedDeg) / 120f);
 
         transform.Rotate(0f, angularSpeedDeg * dt, 0f, Space.World);
 
@@ -199,27 +205,49 @@ public class PlayerCarController : MonoBehaviour
 
         Vector3 shootDirection = muzzlePoint != null ? muzzlePoint.forward : transform.forward;
         MissileProjectile.CreatePlayerShell(spawnPosition, shootDirection, shellSpeed, shellDamage, transform);
+        tankAudio?.PlayCannon(spawnPosition);
         GameManager.Instance?.RegisterPlayerShot();
     }
 
     public void ApplyDamage(float damage)
     {
-        if (GameManager.Instance == null || GameManager.Instance.IsGameOver)
+        if (isDestroyed || GameManager.Instance == null || GameManager.Instance.IsGameOver)
         {
             return;
         }
 
+        tankAudio?.PlayHullHit(transform.position + Vector3.up * 0.7f);
         GameManager.Instance.HandlePlayerDamaged(damage);
+    }
+
+    public void HandleDestroyed()
+    {
+        if (isDestroyed)
+        {
+            return;
+        }
+
+        isDestroyed = true;
+        fireTimer = Mathf.Max(fireTimer, fireCooldown);
+        leftTrackSpeed = 0f;
+        rightTrackSpeed = 0f;
+        hullVelocity = Vector3.zero;
+        currentTurnMagnitude = 0f;
+        SetCollidersEnabled(false);
+        tankVfx?.PlayDestructionEffect();
     }
 
     public void ResetPlayer()
     {
+        isDestroyed = false;
         fireTimer = 0f;
         leftTrackSpeed = 0f;
         rightTrackSpeed = 0f;
         hullVelocity = Vector3.zero;
+        currentTurnMagnitude = 0f;
         targetRefreshTimer = 0f;
         cachedTarget = null;
+        SetCollidersEnabled(true);
         transform.position = initialPosition;
         transform.rotation = initialRotation;
 
@@ -231,6 +259,11 @@ public class PlayerCarController : MonoBehaviour
         if (tankVfx != null)
         {
             tankVfx.ResetEffects();
+        }
+
+        if (tankAudio != null)
+        {
+            tankAudio.ResetAudioState();
         }
     }
 
@@ -432,6 +465,25 @@ public class PlayerCarController : MonoBehaviour
         if (tankVfx == null)
         {
             tankVfx = gameObject.AddComponent<TankVFXController>();
+        }
+
+        if (tankAudio == null)
+        {
+            tankAudio = GetComponent<TankAudioController>();
+        }
+
+        if (tankAudio == null)
+        {
+            tankAudio = gameObject.AddComponent<TankAudioController>();
+        }
+    }
+
+    private void SetCollidersEnabled(bool enabled)
+    {
+        Collider[] colliders = GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            colliders[i].enabled = enabled;
         }
     }
 }

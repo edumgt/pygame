@@ -22,10 +22,10 @@ public static class RuntimeCarFactory
         rb.isKinematic = true;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
 
-        Material hullMat = RuntimeMaterialFactory.Create(new Color(0.25f, 0.38f, 0.22f, 1f));
-        Material turretMat = RuntimeMaterialFactory.Create(new Color(0.22f, 0.33f, 0.2f, 1f));
-        Material trackMat = RuntimeMaterialFactory.Create(new Color(0.1f, 0.1f, 0.12f, 1f));
-        Material detailMat = RuntimeMaterialFactory.Create(new Color(0.58f, 0.64f, 0.4f, 1f));
+        Material hullMat = RuntimeMaterialFactory.Create(new Color(0.25f, 0.38f, 0.22f, 1f), RuntimeMaterialFactory.MaterialPreset.Metal);
+        Material turretMat = RuntimeMaterialFactory.Create(new Color(0.22f, 0.33f, 0.2f, 1f), RuntimeMaterialFactory.MaterialPreset.Metal);
+        Material trackMat = RuntimeMaterialFactory.Create(new Color(0.1f, 0.1f, 0.12f, 1f), RuntimeMaterialFactory.MaterialPreset.Boundary);
+        Material detailMat = RuntimeMaterialFactory.Create(new Color(0.58f, 0.64f, 0.4f, 1f), RuntimeMaterialFactory.MaterialPreset.Metal);
 
         CreatePart(root.transform, PrimitiveType.Cube, new Vector3(0f, 0.4f, 0f), new Vector3(1.55f, 0.55f, 2.2f), hullMat);
         CreatePart(root.transform, PrimitiveType.Cube, new Vector3(-0.92f, 0.26f, 0f), new Vector3(0.28f, 0.24f, 2.28f), trackMat);
